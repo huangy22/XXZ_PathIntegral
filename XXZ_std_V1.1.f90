@@ -55,6 +55,7 @@
     ! THIS IS ALMOST PROJECT-INDEPENDENT 
     double precision, parameter :: tm32   = 1.d0/(2.d0**32.d0)
     double precision, parameter :: eps    = 1.d-14            ! very small number
+    double precision, parameter :: Pi     = 3.141592653       ! pi
     double precision, parameter :: tol    = 0.15d0            ! tolerance for Cor
     logical                     :: prt                        ! flag for write2file
     integer,          parameter :: Mxint  = 2147483647        ! maximum integer
@@ -91,12 +92,13 @@
     integer, parameter  :: MxL = 8                            ! maximum lattice size 
     integer,parameter   :: MaxKink=1024
     integer             :: MxV                                 ! maximum volumn
+    integer,parameter   :: MxOmega=128                         ! maximum Matsubara frequency
     integer, allocatable:: L(:)                                ! actual linear lattice size 
 
     character(8 ), parameter :: ident = 'hs_sqa 0'             ! identifier
     character(12), parameter :: file1 = 'hs_sqa0.dat'          ! datafile
     character(8), parameter ::  ident2 = 'sta_corr'         ! identifier
-    character(16), parameter :: file2 = 'static_corr.dat'      ! datafile
+    character(16), parameter :: file2 = 'static_corr.txt'      ! datafile
     character(100) :: file3 
     character(100) :: file4
     !-----------------------------------------------------------------
@@ -109,8 +111,8 @@
 
     !-- Observables --------------------------------------------------
     !! THIS IS PROJECT-DEPENDENT 
-    integer, parameter :: NObs_b = 19                        ! #basic observables
-    integer, parameter :: NObs_c = 5                          ! #composite observables
+    integer, parameter :: NObs_b = 18                         ! #basic observables
+    integer, parameter :: NObs_c = 3                          ! #composite observables
     integer, parameter :: NObs   = NObs_b+NObs_c              ! Total # observables
     !-----------------------------------------------------------------
 
@@ -119,9 +121,10 @@
     double precision, allocatable :: Quan(:)                  ! Measured quantities
     double precision, allocatable :: Obs(:,:)                 ! 1st--#quan.  2nd--#block
     double precision, allocatable :: Ave(:), Dev(:), Cor(:)   ! average, error bars, and correlation of observables
-    double precision, allocatable :: StaticCorr(:)         ! static spin-spin correlations
-    double precision, allocatable :: ObsCorr(:,:)          ! 1st--#block,  2nd--#vol
-    double precision, allocatable :: AveCorr(:)            ! average
+    double precision, allocatable :: StaticCorr(:)            ! static spin-spin correlations
+    double precision, allocatable :: Momentum(:,:)                   ! k list
+    integer :: Nk
+    double precision, allocatable :: DynamicalCorr(:,:)      ! spin-spin correlations in k-omegarepresentation
     !-----------------------------------------------------------------
 
     !-- Random-number generator---------------------------------------
@@ -223,11 +226,6 @@
     allocate(dWR(1:Dim))
     allocate(WR(1:Dim))
     allocate(WindR(1:Dim))
-    MxV = 1 
-    do i = 1, Dim
-	MxV = MxV*MxL
-    enddo
-
     NSub = 1
     nnb = 2*Dim
 
@@ -243,6 +241,12 @@
 	stop
     endif
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    MxV = 1 
+    do i = 1, Dim
+	MxV = MxV*MxL
+    enddo
+    MxV = MxV*NSub
 
     Vol=1
     do i = 1, Dim
@@ -471,12 +475,19 @@
     
     !-- measurement initialization -----------------------------------
     Norm = 1.d0/Vol/beta
+
+    Nk = 2
+    allocate(Momentum(1:Nk, 1:Dim))
+    Momentum(1, :) = (/0.d0, 0.d0, 0.d0/)
+    Momentum(2, :) = (/0.d0, 0.d0, 2.d0*Pi/)
+
     allocate(Quan(1:NObs_b))
     allocate(Obs(1:NObs, 1:NBlck));       Obs = 0.d0
     allocate(Ave(1:NObs), Dev(1:NObs), Cor(1:NObs))
-    allocate(StaticCorr(1:Vol))
-    allocate(ObsCorr(1:NBlck, 1:Vol));    ObsCorr=0.d0
-    allocate(AveCorr(1:Vol))
+    allocate(StaticCorr(1:Vol*NSub))
+    allocate(DynamicalCorr(1:Nk, 1:MxOmega))
+    StaticCorr = 0.d0
+    DynamicalCorr = 0.d0
     return
   END SUBROUTINE carlo
   !===================================================================
@@ -553,13 +564,13 @@
       endif
     else if(LatticeName=='Pyrochlore') then
       !RealVectors
-      LatticeVector(1,:) = (/0, 2, 2/)
-      LatticeVector(2,:) = (/2, 0, 2/)
-      LatticeVector(3,:) = (/2, 2, 0/)
-      SubVector(1,:) = (/0, 0, 0/)
-      SubVector(2,:) = (/0, 1, 1/)
-      SubVector(3,:) = (/1, 0, 1/)
-      SubVector(4,:) = (/1, 1, 0/)
+      LatticeVector(1,:) = (/0.0, 1.0, 1.0/)
+      LatticeVector(2,:) = (/1.0, 0.0, 1.0/)
+      LatticeVector(3,:) = (/1.0, 1.0, 0.0/)
+      SubVector(1,:) = (/0.0, 0.0, 0.0/)
+      SubVector(2,:) = (/0.0, 0.5, 0.5/)
+      SubVector(3,:) = (/0.5, 0.0, 0.5/)
+      SubVector(4,:) = (/0.5, 0.5, 0.0/)
 
       do i = 1, 4
 	site(i) = i
@@ -720,6 +731,22 @@
 	Vector(1) = tmp-(Vector(3)-1)*L(1)*L(2)-(Vector(2)-1)*L(1)+1
     endif
   END SUBROUTINE
+
+  SUBROUTINE GetRealVector(Site, Vector)
+    implicit none
+    integer, intent(in) :: Site
+    double precision, intent(out) :: Vector(1:Dim)
+    integer :: i, sub, coord(1:Dim)
+    if(LatticeName=='Pyrochlore') then
+	call GetVector(Site, coord, sub)
+	Vector(:) = 0.0
+	do i = 1, Dim
+	    Vector = Vector+coord(i)*LatticeVector(i,:)
+	enddo
+	Vector = Vector+ SubVector(sub,:)
+    endif
+    return
+  END SUBROUTINE GetRealVector
 
   SUBROUTINE GetSite(Site, Vector, Sub)
     implicit none
@@ -1421,7 +1448,7 @@
   !==============Measurement =========================================
   SUBROUTINE measure
     implicit none
-    integer :: i
+    integer :: i, j 
     double precision :: TotalKinks
     logical :: flag
 
@@ -1436,29 +1463,34 @@
     else
         W0=0;W1=1
     endif
-    Quan( 1)=potential_energy()
-    Quan( 2)=kink_number(TotalKinks)
-    Quan( 3)=(Quan(1)-Quan(2))/beta/Vol
-    Quan( 4)=(WR(1))**2
-    Quan( 5)=(WR(2))**2
-    Quan( 6)=(Wt)**2
-    Quan( 7)=Quan(4)+Quan(5)+Quan(6)
-    Quan( 8)=W1
-    Quan( 9)=W0
-    Quan(10)=SM()**2     !Staggerd Magnetization square
-    Quan(11)=Quan(10)**2
-    Quan(12)=Quan( 6)    !Magnetization square
-    Quan(13)=Quan(12)**2
-    Quan(14)=Quan(11)*Vol  !Spatial Susceptibility 
-    Quan(15)=Quan(13)*Vol  !Spatial Susceptibility 
-    Quan(16)=Quan(3)**2
-    Quan(17)=Correlator(1,1)
-    Quan(18)=Correlator(1,2)
-    Quan(19)=Correlator(2,1)
-    do i = 1, Vol
-	StaticCorr(i) = Correlator(1, i)
+    Quan( 1)= potential_energy()
+    Quan( 2)= kink_number(TotalKinks)
+    Quan( 3)= (Quan(1)-Quan(2))/beta/Vol
+    Quan( 4)= Quan(3)**2
+    Quan( 5)= KOmegaCorrelator(Momentum(1,:), 0)
+    Quan( 6)= KOmegaCorrelator(Momentum(1,:), MXOmega/2)
+    Quan( 7)= KOmegaCorrelator(Momentum(2,:), 0)
+    Quan( 8)= KOmegaCorrelator(Momentum(2,:), MXOmega/2)
+    Quan( 9)= (Wt)**2
+    Quan(10)= Quan( 9)**2
+    Quan(11)= Quan(10)*Vol  !Spatial Susceptibility 
+    Quan(12)= SM()**2       !Staggerd Magnetization square
+    Quan(13)= Quan(12)**2
+    Quan(14)= Quan(13)*Vol  !Spatial Susceptibility 
+    Quan(15)= Correlator(1,1)
+    Quan(16)= Correlator(1,2)
+    Quan(17)= Correlator(1,Vol/2)
+    do j = 1, NSub
+	do i = 1, Vol
+	    StaticCorr(i+(j-1)*Vol) = StaticCorr(i+(j-1)*Vol)+Correlator(j, i)
+	enddo
     enddo
 
+    do i = 1, MxOmega
+	do j = 1, Nk
+	    DynamicalCorr(j, i) = KOmegaCorrelator(Momentum(j,:), i)
+	enddo
+    enddo
   END SUBROUTINE measure
 
   double precision FUNCTION potential_energy()
@@ -1589,6 +1621,57 @@
     Correlator=Sz*SegmentState(Vertex1,1)/Beta/4.0
   end FUNCTION Correlator
 
+  SUBROUTINE FrequencyCorrelator(Vertex, omega, ReCorr, ImCorr)
+    !SzSz non-zero frequency correlator
+    implicit none
+    integer :: Vertex,omega
+    double precision :: ReCorr, ImCorr
+    double precision :: ReSz, ImSz
+    double precision :: domega, tmp, phase
+    integer :: EndSite,BeginSite
+    double precision :: BeginTime, EndTime
+    ReSz = 0.d0
+    ImSz = 0.d0
+    BeginSite=1
+    EndSite=NextSite(Vertex,BeginSite)
+    domega = omega*2.0*Pi/Beta
+    do while(BeginSite/=2)
+        BeginTime=KinkTime(Vertex,BeginSite)
+        EndTime=KinkTime(Vertex,EndSite)
+	tmp = SegmentState(Vertex, BeginSite)*(EndTime-BeginTime)/domega
+	phase = domega*(EndTime-BeginTime)
+	ReSz = ReSz + tmp*dsin(phase)
+	ImSz = ImSz + tmp*dcos(phase)
+        BeginSite=EndSite
+        EndSite=NextSite(Vertex,EndSite)
+    enddo
+    ReCorr=ReSz/Beta/2.0
+    ImCorr=ImSz/Beta/2.0
+  end SUBROUTINE FrequencyCorrelator
+
+  double precision FUNCTION KOmegaCorrelator(k, omega)
+    !SzSz non-zero frequency correlator in momentum space
+    implicit none
+    integer :: omega
+    integer :: i, j, l
+    double precision :: k(1:Dim), vec(1:Dim)
+    double precision :: phase, ReCorr, ImCorr
+    double precision :: ReKCorr, ImKCorr
+    ReKCorr = 0.d0
+    ImKCorr = 0.d0
+    do j = 1, Vol
+	call GetRealVector(j, vec)
+	phase = 0.0
+	do l = 1, Dim
+	    phase = phase + k(l)*vec(l)
+	enddo
+	call FrequencyCorrelator(j, omega, ReCorr, ImCorr)
+	ReKCorr = ReKCorr+ReCorr*dcos(phase)+ImCorr*dsin(phase)
+	ImKCorr = ImKCorr+ImCorr*dcos(phase)-ReCorr*dsin(phase)
+    enddo
+    KOmegaCorrelator = (ReKCorr**2.d0+ImKCorr**2.d0)/(Vol**2.0)
+  end FUNCTION KOmegaCorrelator
+
   double precision FUNCTION Susceptibility_total()
     implicit none
     double precision :: M,Sz,BeginTime,EndTime
@@ -1628,24 +1711,14 @@
     Ave(NObs_b+1:NObs) = 0.d0
 
     !-- Q1=<C1>^2/<C1^2> ---------------------------------------------
-    Ave(NObs_b+1)=(Ave(4)+Ave(5))/Ave(6)/2
-    Ave(NObs_b+2)=Ave(8)/Ave(9)
-    Ave(NObs_b+3)=1-Ave(11)/Ave(10)**2/3
-    Ave(NObs_b+4)=1-Ave(13)/Ave(12)**2/3
-    Ave(NObs_b+5)=Ave(16)-Ave(3)**2
+    Ave(NObs_b+1)=1-Ave(10)/Ave( 9)**2/3
+    Ave(NObs_b+2)=1-Ave(13)/Ave(12)**2/3
+    Ave(NObs_b+3)=Ave(4)-Ave(3)**2
 
     !-- Obs(j,k) series ----------------------------------------------
-    do k=1,NBlck
-        if(abs(Obs(6,k))>eps) then
-            Obs(NObs_b+1,k)=(Obs(4,k)+Obs(5,k))/Obs(6,k)/2
-        else
-            Obs(NObs_b+1,k)=0.0
-        endif
-    enddo
-    Obs(NObs_b+2,:)=Obs(8,:)/Obs(9,:)
-    Obs(NObs_b+3,:)=1-Obs(11,:)/Obs(10,:)**2/3
-    Obs(NObs_b+4,:)=5*(1-Obs(13,:)/Obs(12,:)**2/3)/2
-    Obs(NObs_b+5,:)=Obs(16,:)-Obs(3,:)**2
+    Obs(NObs_b+1,:)=1-Obs(10,:)/Obs( 9,:)**2/3
+    Obs(NObs_b+2,:)=1-Obs(13,:)/Obs(12,:)**2/3
+    Obs(NObs_b+3,:)=Obs(4,:)-Obs(3,:)**2
 
    return
   END SUBROUTINE cal_Obs_comp
@@ -1688,20 +1761,35 @@
 
     close(8)
 
-    open (9,file=file2, access='append') 
-    write(9, *)
-
-    if(Dim==2) then
-	write(9,40) ident2, L(:), beta, JJ*4.0, Q*4.0, Seed, TotSamp
-    else if(Dim==3) then
-	write(9,46) ident2, L(:), beta, JJ*4.0, Q*4.0, Seed, TotSamp
-    endif
-
+    open (9,file=file2) 
+    write(9, *) "{ 'Correlations': [ ["
     do j = 1, Vol
-      write(9,47) j, AveCorr(j)
-      47 format(i4,f25.15)
+      write(9,47) StaticCorr(j), ', '
+      47 format(f25.15, a2)
     enddo
+    write(9, *) "], ["
+    do j = Vol+1, 2*Vol
+      write(9,47) StaticCorr(j), ', '
+    enddo
+    write(9, *) "], ["
+    do j = 2*Vol+1, 3*Vol
+      write(9,47) StaticCorr(j), ', '
+    enddo
+    write(9, *) "], ["
+    do j = 3*Vol+1, 4*Vol
+      write(9,47) StaticCorr(j), ', '
+    enddo
+    write(9, *) "]], "
 
+    write(9, *) "'DynamicalCorrelations': [ ["
+    do j = 1, MxOmega
+      write(9,47) DynamicalCorr(1, j), ', '
+    enddo
+    write(9, *) "], ["
+    do j = 1, MxOmega
+      write(9,47) DynamicalCorr(2, j), ', '
+    enddo
+    write(9, *) "]]} "
     close(9)
 
     if(prt) return
@@ -1749,9 +1837,6 @@
     do j = 1, NObs_b
       Obs(j,iblck) = Obs(j,iblck)+ Quan(j)
     enddo
-    do i = 1, Vol
-	ObsCorr(iblck, i) = ObsCorr(iblck, i)+StaticCorr(i)
-    enddo
   END SUBROUTINE coll_data 
   !===================================================================
 
@@ -1765,9 +1850,6 @@
     nor = 1.d0/(Nsamp*1.d0)
     do j = 1, NObs_b
       Obs(j,iblck) = Obs(j,iblck)*nor
-    enddo
-    do j = 1, Vol
-      ObsCorr(iblck, j) = ObsCorr(iblck, j)*nor
     enddo
   END SUBROUTINE norm_Nsamp
   !===================================================================
@@ -1787,10 +1869,8 @@
     do j = 1, NObs_b
       Ave(j) = nor*Sum(Obs(j,1:NBlck))
     enddo
-
-    do i = 1, Vol
-      AveCorr(i) = nor*Sum(ObsCorr(1:NBlck,i))
-    enddo
+    StaticCorr(:) = nor/(NSamp*1.d0)*StaticCorr(:)
+    DynamicalCorr(:,:) = nor/(NSamp*1.d0)*DynamicalCorr(:,:)
 
     Coarsen: do
       prt = .true.
@@ -1808,6 +1888,7 @@
         Dev(j)   = dsqrt(Dev(j)/(NBlck-1.d0))
         if(dabs(Cor(j))>tol) prt = .false.
       ENDDO 
+
 
       IF(prt)                         EXIT Coarsen 
       IF(NBlck<64)    THEN
@@ -1971,4 +2052,4 @@
   !*******************************************************************
 
 END PROGRAM main
-!=====================================================================
+!====================================================================
