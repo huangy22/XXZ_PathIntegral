@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import random
 import os, sys
-IsCluster=False
+IsCluster=True
 sourcedir="../program/"
 execute="XXZ"
 Dim = 3
@@ -14,6 +14,7 @@ sourcename=sourcename[-1]
 os.system("gfortran "+sourcedir+"/"+sourcename+" -O3 -o "+homedir+"/"+execute)
 infilepath=homedir+"/infile"
 outfilepath=homedir+"/outfile"
+jobfilepath=homedir+"/jobfile"
 inlist=open(homedir+"/inlist","r")
 i=0
 nblck=int(inlist.readline().split(":")[1])
@@ -26,6 +27,8 @@ if(os.path.exists(infilepath)!=True):
     os.system("mkdir "+infilepath)
 if(os.path.exists(outfilepath)!=True):
     os.system("mkdir "+outfilepath)
+if(os.path.exists(jobfilepath)!=True):
+    os.system("mkdir "+jobfilepath)
 for eachline in inlist:
         i+=1
         para=eachline.split()
@@ -51,18 +54,16 @@ for eachline in inlist:
             if IsCluster==False:
                 os.system("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile)
             else:
-                with open(jobfile, "w") as fjob:
-                    fjob.write("#!/bin/sh\n"+"#PBS -N "+jobname+"\n")
-                    if hasattr(job_atom, "pbs_command"):
-                        fjob.write(job_atom.pbs_command+"\n")
+                with open(jobfilepath+"/"+jobfile, "w") as fjob:
+                    fjob.write("#!/bin/sh\n"+"#PBS -N "+jobfile+"\n")
                     fjob.write("#PBS -o "+homedir+"/Output\n")
                     fjob.write("#PBS -e "+homedir+"/Error\n")
+                    fjob.write("#PBS -l walltime=200:00:00\n")
                     fjob.write("echo $PBS_JOBID >>"+homedir+"/id_job.log\n")
                     fjob.write("cd "+homedir+"\n")
-                    fjob.write(job_atom.execute+" -f "+infilepath+"/"+infile)
+                    fjob.write("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile)
 
-                    os.system("qsub "+jobfile)
-                    os.system("rm "+jobfile)
-                    print("job "+jobfile+" submitted!")
+                os.system("qsub "+jobfilepath+ "/"+jobfile)
+                os.system("rm "+jobfilepath+ "/"+jobfile)
 print("Jobs manage daemon is ended")
 sys.exit(0)
