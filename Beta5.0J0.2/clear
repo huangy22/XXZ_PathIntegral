@@ -2,3 +2,5 @@ rm *.dat
 rm *.bat
 rm *.txt
 rm *.log
+rm -r infile/*
+rm -r outfile/*	  

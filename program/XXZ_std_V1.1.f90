@@ -1768,7 +1768,7 @@
     integer       :: i, j, k, Nwri
     double precision :: err
 
-    open (8,file=file1, access='append') 
+    open(8,file=file1, access='append') 
     write(8, *);          write(6,*)
 
     if(Dim==2) then
@@ -1792,7 +1792,7 @@
 
     close(8)
 
-    open (9,file=file2) 
+    open(9,file=file2, access="append") 
     write(9, *) "{ 'Correlations': [ ["
     do j = 1, Vol
       write(9,47) StaticCorr(j), ', '
@@ -1813,7 +1813,7 @@
     write(9, *) "]]} "
     close(9)
 
-    open (10,file=file3) 
+    open (10,file=file3, access="append") 
     write(10, *) "k=", Momentum(1,:)
     write(10,*) 0.d0, DynamicalCorr(1, 0), Dev(5)*sqrt(NmeasCorr*1.d0)
     err = Dev(6)*sqrt(NmeasCorr*1.d0)
