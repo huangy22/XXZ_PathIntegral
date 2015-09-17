@@ -4,3 +4,6 @@ rm *.txt
 rm *.log
 rm -r infile
 rm -r outfile	  
+rm -r jobfile
+rm Error
+rm Output
