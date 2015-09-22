@@ -69,6 +69,7 @@
     integer            :: Ntoss                           ! # MC sweeps for equilibration
     integer            :: Nsamp                           ! # samples in unit 'NBlck'
     integer            :: NmeasCorr    ! # normal measure times between correlation measurement
+    integer            :: NSave
     integer            :: TotSamp                             
     integer            :: IsLoad
 
@@ -99,8 +100,9 @@
     character(8 ), parameter :: ident = 'hs_sqa 0'             ! identifier
     character(12), parameter :: file1 = 'hs_sqa0.dat'          ! datafile
     character(8), parameter ::  ident2 = 'sta_corr'            ! identifier
-    character(16), parameter :: file2 = 'static_corr.txt'      ! datafile
-    character(19), parameter :: file3 = 'corr_frequency.txt'      ! datafile
+    character(100)  :: file2        ! static correlation
+    character(100)  :: file3        ! frequency correlator
+    character(100)  :: file4        ! middle blocks
     character(100) :: file_config
     character(100) :: file_config2
     !-----------------------------------------------------------------
@@ -232,8 +234,8 @@
     NSub = 1
     nnb = 2*Dim
 
-    print *, 'Lattice, L, beta, J,Q,Hz,Ntoss, Nsamp, Nswee, Seed, NBlck, IsLoad,Outputfile'
-    read  *,  LatticeName, L(:), beta, JJ, Q, ExternalField, Ntoss, Nsamp, Nswee, Seed, NBlck, IsLoad,filename
+    print *, 'Lattice, L, beta, J,Q,Hz,Ntoss, Nsamp, Nswee, NSave, Seed, NBlck, IsLoad, Outputfile, file2, file3, file4'
+    read  *,  LatticeName,L(:),beta,JJ,Q,ExternalField,Ntoss,Nsamp,Nswee,NSave,Seed,NBlck,IsLoad,filename,file2,file3,file4
 
     !!!!!!Treatments for lattices with multiple sublattices!!!!!!!!!!
     if(LatticeName=='Pyrochlore') then
@@ -342,8 +344,14 @@
       print *, "simulation: Block", iblck, " done!"
       call norm_Nsamp(iblck)
       call t_elapse(-1)      ! '-1' just for trace the time
-    enddo
 
+      if(mod(iblck, NSave)==0) then
+	  call write2file_corr(iblck)
+          call midwrite2file(iblck)
+          call saveconfig
+	  print*, iblck,"save data and configuration"
+      endif
+    enddo
     close(18)
 
     call t_elapse(3)         ! '3' for markov-chain, including simulation and measurement
@@ -351,6 +359,7 @@
     !--- Statistics --------------------------------------------------
     call stat_alan
     call write2file
+    call write2file_corr(NBlck)
     call saveconfig
     call t_elapse(4)         ! '4' total time 
 
@@ -1792,7 +1801,46 @@
 
     close(8)
 
-    open(9,file=file2, access="append") 
+
+    if(prt) return
+    Nwri = NObs_b;                   if(Nwri>5) Nwri = 7
+    write(6,*)
+    do k = 1, NBlck
+       write(6,42) k,(Obs(j,k),j=1,Nwri)
+       42 format(i6,7f16.8) 
+    end do
+
+    return
+  END SUBROUTINE write2file
+  !===================================================================
+
+  SUBROUTINE midwrite2file(iblck)
+    implicit none
+    integer :: iblck,i, j, start
+    open (8,file=file4, access='append') 
+    start=iblck-NSave+1
+    do i=start,iblck
+        write(8,*)
+        write(8,50) ident, L(1), beta, JJ*4.0, Q*16.0, Seed, NSamp, i
+        50 format(a8,i6,3f10.6,i12,i8,i8)
+        do j = 1, NObs_b
+          write(8,51) j,Obs(j,i)
+          51 format(i4,f25.15)
+        enddo
+    enddo
+    close(8)
+  END SUBROUTINE midwrite2file
+  !===================================================================
+
+  SUBROUTINE write2file_corr(iblck)
+    implicit none
+    integer       :: i, j, k, Nwri, iblck
+    double precision :: err,nor
+
+    nor  = 1.d0/(iblck*1.d0)
+    StaticCorr(:) = nor/(NSamp*1.d0)*(NmeasCorr*1.d0)*StaticCorr(:)
+    DynamicalCorr(:,:) = nor/(NSamp*1.d0)*(NmeasCorr*1.d0)*DynamicalCorr(:,:)
+    open(9,file=file2) 
     write(9, *) "{ 'Correlations': [ ["
     do j = 1, Vol
       write(9,47) StaticCorr(j), ', '
@@ -1813,33 +1861,26 @@
     write(9, *) "]]} "
     close(9)
 
-    open (10,file=file3, access="append") 
+    open (10,file=file3) 
     write(10, *) "k=", Momentum(1,:)
     write(10,*) 0.d0, DynamicalCorr(1, 0), Dev(5)*sqrt(NmeasCorr*1.d0)
     err = Dev(6)*sqrt(NmeasCorr*1.d0)
     do j = 1, MxOmega
       write(10,*) 2.d0*Pi*(j*1.d0)/Beta, DynamicalCorr(1, j), err
     enddo
+    write(10, *) 
     write(10, *) "k=", Momentum(2, :)
     write(10,*) 0.d0, DynamicalCorr(2, 0), Dev(7)*sqrt(NmeasCorr*1.d0)
     err = Dev(8)*sqrt(NmeasCorr*1.d0)
     do j = 1, MxOmega
       write(10,*) 2.d0*Pi*(j*1.d0)/Beta, DynamicalCorr(2, j), err
     enddo
+    write(10, *) 
     close(10)
-
-    if(prt) return
-    Nwri = NObs_b;                   if(Nwri>5) Nwri = 7
-    write(6,*)
-    do k = 1, NBlck
-       write(6,42) k,(Obs(j,k),j=1,Nwri)
-       42 format(i6,7f16.8) 
-    end do
-
     return
-  END SUBROUTINE write2file
-  !===================================================================
+  END SUBROUTINE write2file_corr
 
+  !===================================================================
   SUBROUTINE saveconfig
     implicit none
     integer  :: i,j,k
@@ -1905,8 +1946,6 @@
     do j = 1, NObs_b
       Ave(j) = nor*Sum(Obs(j,1:NBlck))
     enddo
-    StaticCorr(:) = nor/(NSamp*1.d0)*(NmeasCorr*1.d0)*StaticCorr(:)
-    DynamicalCorr(:,:) = nor/(NSamp*1.d0)*(NmeasCorr*1.d0)*DynamicalCorr(:,:)
 
     Coarsen: do
       prt = .true.

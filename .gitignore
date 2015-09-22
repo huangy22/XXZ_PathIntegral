@@ -2,5 +2,6 @@
 *.bat
 *.txt
 *.log
+*.cnf
 _in*
 _out*

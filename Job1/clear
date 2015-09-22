@@ -2,6 +2,7 @@ rm *.dat
 rm *.bat
 rm *.txt
 rm *.log
+rm *.cnf
 rm -r infile
 rm -r outfile	  
 rm -r jobfile

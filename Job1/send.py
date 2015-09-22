@@ -1,14 +1,14 @@
 #!/usr/bin/python
 import random
 import os, sys
-IsCluster=True
+IsCluster=False
 sourcedir="../program/"
 execute="XXZ"
 Dim = 3
 Latticename = "Pyrochlore"
 homedir=os.getcwd()
 filelist=os.listdir(sourcedir)
-sourcename=[elem for elem in filelist if elem[-3:]=="f90"]
+sourcename=[elem for elem in filelist if elem[0:3]=="XXZ" and elem[-3:]=="f90"]
 sourcename.sort()
 sourcename=sourcename[-1]
 os.system("gfortran "+sourcedir+"/"+sourcename+" -O3 -o "+homedir+"/"+execute)
@@ -20,6 +20,7 @@ i=0
 nblck=int(inlist.readline().split(":")[1])
 nsample=int(inlist.readline().split(":")[1])
 nsweep=int(inlist.readline().split(":")[1])
+nsave=int(inlist.readline().split(":")[1])
 ntoss=int(inlist.readline().split(":")[1])
 isload=int(inlist.readline().split(":")[1])
 seed=-int(random.random()*1000)
@@ -42,17 +43,21 @@ for eachline in inlist:
             item.append(str(ntoss))
             item.append(str(nsample))
             item.append(str(nsweep))
+            item.append(str(nsave))
             item.append(str(seed))
             item.append(str(nblck))
             item.append(str(isload))
-            item.append("_".join(para[2:-1])+"_"+str(j)+".dat")
+            item.append("_".join(para[2:-1])+"_"+str(j)+".cnf")
+            item.append("static_corr_"+str(j)+".txt")
+            item.append("corr_frequency_"+str(j)+".txt")
+            item.append("mid_hs_sqa0_"+str(j)+".txt")
             stri=" ".join(item)
             f.write(str(Dim)+"\n")
             f.write("Pyrochlore "+stri)
             f.close()
 
             if IsCluster==False:
-                os.system("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile)
+                os.system("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile+" &")
             else:
                 with open(jobfilepath+"/"+jobfile, "w") as fjob:
                     fjob.write("#!/bin/sh\n"+"#PBS -N "+jobfile+"\n")
