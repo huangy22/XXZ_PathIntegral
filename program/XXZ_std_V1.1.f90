@@ -259,7 +259,7 @@
     enddo
     Vol = Vol*NSub
 
-    NmeasCorr = 100
+    NmeasCorr = 50
 
     allocate(dr(nnb, 1:NSub, 1:Dim))
     allocate(back(nnb, 1:NSub))
