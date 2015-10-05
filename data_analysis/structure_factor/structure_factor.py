@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 
 def Reform(Data, NSub, L, Vol):
     Chi = np.ndarray((NSub, NSub, Vol))
-    AveChi = np.ndarray((NSub, NSub, Vol))
     for i in range(NSub):
         for j in range(Vol*NSub):
             site = j/4
@@ -33,7 +32,7 @@ def PlotChi_2D(Chi, lat, DoesSave=True):
                 if np.abs(kpoint[2])<1e-5:
                     KList_hl0.append((i,j,k))
 
-    bound=[[-40,40],[-40,40]]
+    bound=[[-20,20],[-20,20]]
     ######hhl
     k_hhl, ChiK_hhl=lat.FourierTransformation(Chi[:,:,:], \
             KList_hhl, "Integer", bound=bound)
@@ -59,10 +58,11 @@ def PlotChi_2D(Chi, lat, DoesSave=True):
     plt.figure(1)
     ax1=plt.subplot(121,aspect='equal')
     plt.scatter(x_hhl,y_hhl,c=ChiK_hhl, s=29, edgecolor="black", linewidth=0)
+    print max(ChiK_hhl), min(ChiK_hhl),  max(ChiK_hl0), min(ChiK_hl0)
     plt.xlabel("Direction [hh0]")
     plt.ylabel("Direction [00l]")
-    plt.xlim(-30, 30)
-    plt.ylim(-30, 30)
+    plt.xlim(-15, 15)
+    plt.ylim(-15, 15)
     label=np.linspace(min(ChiK_hhl),max(ChiK_hhl), 4)
 
     plt.figure(1)
@@ -70,8 +70,8 @@ def PlotChi_2D(Chi, lat, DoesSave=True):
     plt.scatter(x_hl0,y_hl0,c=ChiK_hl0, s=29, edgecolor="black", linewidth=0)
     plt.xlabel("Direction [h00]")
     plt.ylabel("Direction [0l0]")
-    plt.xlim(-30, 30)
-    plt.ylim(-30, 30)
+    plt.xlim(-15, 15)
+    plt.ylim(-15, 15)
     label=np.linspace(min(ChiK_hl0),max(ChiK_hl0), 4)
 
     if DoesSave:
@@ -85,11 +85,11 @@ if __name__=="__main__":
     import weight
     import IO
     NSub = 4
-    L = 8
+    L = 4
     Vol = L*L*L
 
     WeightPara={"NSublat": NSub, "L":[L,L,L],
-            "Beta": 1.0, "MaxTauBin":64}
+            "Beta": 5.0, "MaxTauBin":128}
     Map=weight.IndexMap(**WeightPara)
 
     l=lat.Lattice("Pyrochlore", Map)

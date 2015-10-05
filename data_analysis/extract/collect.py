@@ -3,14 +3,15 @@ import os
 n=50
 Beta = 5.0
 L = 4
-os.system("rm hs_sqa0.dat")
-os.system("rm corr_frequency.txt")
-os.system("rm static_corr.txt")
-os.system("gfortran ../../../program/extdata.f90 -o ./extdata")
-os.system("cp ../../mid_hs_sqa0_*.txt .")
-os.system("gfortran ../../../program/extcorr.f90 -o ./extcorr")
-os.system("cp ../../corr_frequency_*.txt .")
-os.system("cp ../../static_corr_*.txt .")
+path = "../data/L4_5.0_0.2/"
+os.system("rm *s_sqa*.dat")
+os.system("rm corr_frequenc*.txt")
+os.system("rm static_cor*.txt")
+os.system("gfortran ../../program/extdata.f90 -o ./extdata")
+os.system("cp "+path+"mid_hs_sqa0_*.txt .")
+os.system("gfortran ../../program/extcorr.f90 -o ./extcorr")
+os.system("cp "+path+"corr_frequency_*.txt .")
+os.system("cp "+path+"static_corr_*.txt .")
 
 for i in range(0,n):
     order="echo "+str(i)+" "+str(n)+" >temp.dat"
@@ -23,6 +24,9 @@ os.system(order)
 order="./extcorr < tempcorr.dat"
 os.system(order)
 
+os.system("cp static_corr.txt "+path)
+os.system("cp corr_frequency.txt "+path)
+os.system("cp hs_sqa0.dat "+path)
 os.system("rm temp.dat")
 os.system("rm tempcorr.dat")
 

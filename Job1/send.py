@@ -49,15 +49,17 @@ for eachline in inlist:
             item.append(str(isload))
             item.append("_".join(para[2:-1])+"_"+str(j)+".cnf")
             item.append("static_corr_"+str(j)+".txt")
-            item.append("corr_frequency_"+str(j)+".txt")
+            item.append("corr_k000_"+str(j)+".txt")
             item.append("mid_hs_sqa0_"+str(j)+".txt")
+            item.append("corr_k002PI_"+str(j)+".txt")
             stri=" ".join(item)
             f.write(str(Dim)+"\n")
             f.write("Pyrochlore "+stri)
             f.close()
 
             if IsCluster==False:
-                os.system("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile+" &")
+                #os.system("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile+" &")
+                os.system("./"+execute+" < "+infilepath+"/"+infile)
             else:
                 with open(jobfilepath+"/"+jobfile, "w") as fjob:
                     fjob.write("#!/bin/sh\n"+"#PBS -N "+jobfile+"\n")

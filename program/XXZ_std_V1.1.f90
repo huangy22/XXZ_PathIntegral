@@ -101,7 +101,8 @@
     character(12), parameter :: file1 = 'hs_sqa0.dat'          ! datafile
     character(8), parameter ::  ident2 = 'sta_corr'            ! identifier
     character(100)  :: file2        ! static correlation
-    character(100)  :: file3        ! frequency correlator
+    character(100)  :: file3        ! frequency correlator 1
+    character(100)  :: file5        ! frequency correlator 2
     character(100)  :: file4        ! middle blocks
     character(100) :: file_config
     character(100) :: file_config2
@@ -130,8 +131,8 @@
     double precision, allocatable :: Momentum(:,:)                   ! k list
     integer :: Nk
     double precision, allocatable :: DynamicalCorr(:,:)      ! spin-spin correlations in k-omegarepresentation
-    double precision, allocatable :: ReExp(:), ImExp(:)
-    !-----------------------------------------------------------------
+    double precision, allocatable :: ReKPhase(:,:), ImKPhase(:, :)
+    !----------------------------------------------------------------
 
     !-- Random-number generator---------------------------------------
     ! THIS IS PROJECT-INDEPENDENT 
@@ -234,8 +235,8 @@
     NSub = 1
     nnb = 2*Dim
 
-    print *, 'Lattice, L, beta, J,Q,Hz,Ntoss, Nsamp, Nswee, NSave, Seed, NBlck, IsLoad, Outputfile, file2, file3, file4'
-    read  *,  LatticeName,L(:),beta,JJ,Q,ExternalField,Ntoss,Nsamp,Nswee,NSave,Seed,NBlck,IsLoad,filename,file2,file3,file4
+    print *, 'Lattice, L, beta, J,Q,Hz,Ntoss, Nsamp, Nswee, NSave, Seed, NBlck, IsLoad, Outputfile, file2, file3, file4, file5'
+    read  *,  LatticeName,L(:),beta,JJ,Q,ExternalField,Ntoss,Nsamp,Nswee,NSave,Seed,NBlck,IsLoad,filename,file2,file3,file4, file5
 
     !!!!!!Treatments for lattices with multiple sublattices!!!!!!!!!!
     if(LatticeName=='Pyrochlore') then
@@ -306,8 +307,8 @@
 
     !--- Initialization ----------------------------------------------
     call t_elapse(0)         ! '0' for the 1st time.
-    call carlo
     call def_lattice
+    call carlo
     call t_elapse(1)         ! '1' for set up
 
     call winding_number()
@@ -348,7 +349,7 @@
       if(mod(iblck, NSave)==0) then
 	  call write2file_corr(iblck)
           call midwrite2file(iblck)
-          call saveconfig
+          !call saveconfig
 	  print*, iblck,"save data and configuration"
       endif
     enddo
@@ -359,7 +360,6 @@
     !--- Statistics --------------------------------------------------
     call stat_alan
     call write2file
-    call write2file_corr(NBlck)
     call saveconfig
     call t_elapse(4)         ! '4' total time 
 
@@ -375,6 +375,7 @@
     implicit none
     integer  :: i,j, k, x, y, xp, xm, ym, yp
     integer  :: kb,temp
+    double precision :: vec(1:Dim)
     double precision :: phase
     
     Comp=1.0/beta
@@ -505,13 +506,18 @@
     StaticCorr = 0.d0
     DynamicalCorr = 0.d0
 
-    allocate(ReExp(0:NPhase-1))
-    allocate(ImExp(0:NPhase-1))
+    allocate(ReKPhase(1:Nk, 1:Vol))
+    allocate(ImKPhase(1:Nk, 1:Vol))
 
-    do i = 0, NPhase-1
-	phase = i/(NPhase*1.d0)*2.d0*Pi
-	ReExp(i) = dcos(phase)
-	ImExp(i) = dsin(phase)
+    do k = 1, Nk
+	do i = 1, Vol
+	    phase = 0.d0
+	    do j = 1, Dim
+		phase = phase + Momentum(k, j)*RealVector(i, j)
+	    enddo
+	    ReKPhase(k, i) = dcos(phase)
+	    ImKPhase(k, i) = dsin(phase)
+	enddo
     enddo
     return
   END SUBROUTINE carlo
@@ -1492,10 +1498,10 @@
     Quan( 2)= kink_number(TotalKinks)
     Quan( 3)= (Quan(1)-Quan(2))/beta/Vol
     Quan( 4)= Quan(3)**2
-    Quan( 5)= KOmegaCorrelator(Momentum(1,:), 0)
-    Quan( 6)= KOmegaCorrelator(Momentum(1,:), MXOmega/2)
-    Quan( 7)= KOmegaCorrelator(Momentum(2,:), 0)
-    Quan( 8)= KOmegaCorrelator(Momentum(2,:), MXOmega/2)
+    Quan( 5)= GetKOmegaCorr(1, 0)
+    Quan( 6)= GetKOmegaCorr(1, MXOmega/2)
+    Quan( 7)= GetKOmegaCorr(2, 0)
+    Quan( 8)= GetKOmegaCorr(2, MXOmega/2)
     Quan( 9)= (Wt)**2
     Quan(10)= Quan( 9)**2
     Quan(11)= Quan(10)*Vol  !Spatial Susceptibility 
@@ -1515,12 +1521,7 @@
 	    StaticCorr(i+(j-1)*Vol) = StaticCorr(i+(j-1)*Vol)+Correlator(j, i)
 	enddo
     enddo
-
-    do i = 0, MxOmega
-	do j = 1, Nk
-	    DynamicalCorr(j, i) = DynamicalCorr(j, i) + KOmegaCorrelator(Momentum(j,:), i)
-	enddo
-    enddo
+    call KOmegaCorrelator()
   END SUBROUTINE measure_Corr
 
   double precision FUNCTION potential_energy()
@@ -1648,7 +1649,7 @@
         BeginSite=EndSite
         EndSite=NextSite(Vertex2,EndSite)
     enddo
-    Correlator=Sz*SegmentState(Vertex1,1)/Beta/4.0
+    Correlator=Sz*SegmentState(Vertex1,1)/4.0
   end FUNCTION Correlator
 
   SUBROUTINE FrequencyCorrelator(Vertex, omega, ReCorr, ImCorr)
@@ -1660,33 +1661,37 @@
     double precision :: domega, tmp
     integer :: iphase
     integer :: EndSite,BeginSite
-    double precision :: BeginTime, EndTime
+    double precision :: BeginTime, EndTime, phase
     ReSz = 0.d0
     ImSz = 0.d0
-    BeginSite=1
+    BeginSite = 1
+    BeginTime = KinkTime(Vertex, BeginSite)
     EndSite=NextSite(Vertex,BeginSite)
+    EndTime = KinkTime(Vertex, EndSite)
     domega = omega*2.0*Pi/Beta
     do while(BeginSite/=2)
-        BeginTime=KinkTime(Vertex,BeginSite)
-        EndTime=KinkTime(Vertex,EndSite)
 	if(omega==0) then
 	    tmp = SegmentState(Vertex, BeginSite)*(EndTime-BeginTime)
 	    ReSz = ReSz + tmp
-	    ImSz = ImSz + tmp
 	else
-	    tmp = SegmentState(Vertex, BeginSite)*(EndTime-BeginTime)/domega
-	    iphase = mod(int((domega*(EndTime-BeginTime))/2.0/Pi*(NPhase*1.d0)), NPhase)
-	    ReSz = ReSz + tmp*ImExp(iphase)
-	    ImSz = ImSz + tmp*ReExp(iphase)
+	    tmp = SegmentState(Vertex, BeginSite)/domega
+	    !iphase = mod(int((domega*(EndTime-BeginTime))/2.0/Pi*(NPhase*1.d0)), NPhase)
+	    !ReSz = ReSz - tmp*ImExp(iphase)
+	    !ImSz = ImSz + tmp*ReExp(iphase)
+	    phase = domega*(EndTime-BeginTime)
+	    ReSz = ReSz - tmp*dsin(phase)
+	    ImSz = ImSz + tmp*dcos(phase)
 	endif
-        BeginSite=EndSite
-        EndSite=NextSite(Vertex,EndSite)
+        BeginSite = EndSite
+	BeginTime = EndTime
+        EndSite = NextSite(Vertex,EndSite)
+	EndTime = KinkTime(Vertex, EndSite)
     enddo
-    ReCorr=ReSz/Beta/2.0
-    ImCorr=ImSz/Beta/2.0
+    ReCorr=ReSz/2.d0
+    ImCorr=ImSz/2.d0
   end SUBROUTINE FrequencyCorrelator
 
-  double precision FUNCTION KOmegaCorrelator(k, omega)
+  subroutine KOmegaCorrelator()
     !SzSz non-zero frequency correlator in momentum space
     implicit none
     integer :: omega
@@ -1694,22 +1699,49 @@
     double precision :: k(1:Dim), vec(1:Dim)
     double precision :: phase, ReCorr, ImCorr
     integer :: iphase
+    double precision :: ReKCorr(1:Nk), ImKCorr(1:Nk)
+    do omega = 0, MxOmega
+	ReKCorr = 0.d0
+	ImKCorr = 0.d0
+	do j = 1, Vol
+	    call FrequencyCorrelator(j, omega, ReCorr, ImCorr)
+	    ReKCorr(1) = ReKCorr(1) + ReCorr
+	    ImKCorr(1) = ImKCorr(1) + ImCorr
+	    do i = 2, Nk
+		ReKCorr(i) = ReKCorr(i) + ReCorr*ReKPhase(i, j) + ImCorr*ImKPhase(i, j)
+		ImKCorr(i) = ImKCorr(i) + ImCorr*ReKPhase(i, j) - ReCorr*ImKPhase(i, j)
+	    enddo
+	enddo
+	do i = 1, Nk
+	    DynamicalCorr(i,omega) = DynamicalCorr(i,omega) + (ReKCorr(i)**2.d0+ImKCorr(i)**2.d0)/(Vol*Beta)
+	enddo
+    enddo
+  end subroutine KOmegaCorrelator
+
+  double precision function GetKOmegaCorr(k, omega)
+    !SzSz non-zero frequency correlator in momentum space
+    implicit none
+    integer :: omega
+    integer :: i, j, l, k
+    double precision :: phase, ReCorr, ImCorr
+    integer :: iphase
     double precision :: ReKCorr, ImKCorr
     ReKCorr = 0.d0
     ImKCorr = 0.d0
     do j = 1, Vol
-	call GetRealVector(j, vec)
-	phase = 0.0
-	do l = 1, Dim
-	    phase = phase + k(l)*vec(l)
-	enddo
 	call FrequencyCorrelator(j, omega, ReCorr, ImCorr)
-	iphase = mod(int(phase/2.d0/Pi*(NPhase*1.d0)), NPhase)
-	ReKCorr = ReKCorr +ReCorr*ReExp(iphase) +ImCorr*ImExp(iphase)
-	ImKCorr = ImKCorr +ImCorr*ReExp(iphase) -ReCorr*ImExp(iphase)
+	if(k==1) then
+	    ReKCorr = ReKCorr + ReCorr
+	    ImKCorr = ImKCorr + ImCorr
+	else
+	    ReKCorr = ReKCorr + ReCorr*ReKPhase(k, j) + ImCorr*ImKPhase(k, j)
+	    ImKCorr = ImKCorr + ImCorr*ReKPhase(k, j) - ReCorr*ImKPhase(k, j)
+	endif
     enddo
-    KOmegaCorrelator = (ReKCorr**2.d0+ImKCorr**2.d0)/(Vol**2.0)
-  end FUNCTION KOmegaCorrelator
+    GetKOmegaCorr = (ReKCorr**2.d0+ImKCorr**2.d0)/(Vol*1.d0)
+  end function GetKOmegaCorr
+
+
 
   double precision FUNCTION Susceptibility_total()
     implicit none
@@ -1801,7 +1833,6 @@
 
     close(8)
 
-
     if(prt) return
     Nwri = NObs_b;                   if(Nwri>5) Nwri = 7
     write(6,*)
@@ -1837,46 +1868,50 @@
     integer       :: i, j, k, Nwri, iblck
     double precision :: err,nor
 
-    nor  = 1.d0/(iblck*1.d0)
-    StaticCorr(:) = nor/(NSamp*1.d0)*(NmeasCorr*1.d0)*StaticCorr(:)
-    DynamicalCorr(:,:) = nor/(NSamp*1.d0)*(NmeasCorr*1.d0)*DynamicalCorr(:,:)
+    nor  = (NmeasCorr*1.d0)/(iblck*NSamp*1.d0)
     open(9,file=file2) 
+    write(9, *) "##Num=", iblck
     write(9, *) "{ 'Correlations': [ ["
     do j = 1, Vol
-      write(9,47) StaticCorr(j), ', '
+      write(9,47) nor*StaticCorr(j), ', '
       47 format(f25.15, a2)
     enddo
     write(9, *) "], ["
     do j = Vol+1, 2*Vol
-      write(9,47) StaticCorr(j), ', '
+      write(9,47) nor*StaticCorr(j), ', '
     enddo
     write(9, *) "], ["
     do j = 2*Vol+1, 3*Vol
-      write(9,47) StaticCorr(j), ', '
+      write(9,47) nor*StaticCorr(j), ', '
     enddo
     write(9, *) "], ["
     do j = 3*Vol+1, 4*Vol
-      write(9,47) StaticCorr(j), ', '
+      write(9,47) nor*StaticCorr(j), ', '
     enddo
     write(9, *) "]]} "
     close(9)
 
     open (10,file=file3) 
-    write(10, *) "k=", Momentum(1,:)
-    write(10,*) 0.d0, DynamicalCorr(1, 0), Dev(5)*sqrt(NmeasCorr*1.d0)
+    write(10, *) "##Num=", iblck
+    write(10, *) "##k=", Momentum(1,:)
+    write(10,*) 0.d0, nor*DynamicalCorr(1, 0), Dev(5)*sqrt(NmeasCorr*1.d0)
     err = Dev(6)*sqrt(NmeasCorr*1.d0)
     do j = 1, MxOmega
-      write(10,*) 2.d0*Pi*(j*1.d0)/Beta, DynamicalCorr(1, j), err
-    enddo
-    write(10, *) 
-    write(10, *) "k=", Momentum(2, :)
-    write(10,*) 0.d0, DynamicalCorr(2, 0), Dev(7)*sqrt(NmeasCorr*1.d0)
-    err = Dev(8)*sqrt(NmeasCorr*1.d0)
-    do j = 1, MxOmega
-      write(10,*) 2.d0*Pi*(j*1.d0)/Beta, DynamicalCorr(2, j), err
+      write(10,*) 2.d0*Pi*(j*1.d0)/Beta, nor*DynamicalCorr(1, j), err
     enddo
     write(10, *) 
     close(10)
+
+    open(11, file=file5)
+    write(11, *) "##Num=", iblck
+    write(11, *) "##k=", Momentum(2, :)
+    write(11,*) 0.d0, nor*DynamicalCorr(2, 0), Dev(7)*sqrt(NmeasCorr*1.d0)
+    err = Dev(8)*sqrt(NmeasCorr*1.d0)
+    do j = 1, MxOmega
+      write(11,*) 2.d0*Pi*(j*1.d0)/Beta, nor*DynamicalCorr(2, j), err
+    enddo
+    write(11, *) 
+    close(11)
     return
   END SUBROUTINE write2file_corr
 

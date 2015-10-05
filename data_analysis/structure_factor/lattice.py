@@ -153,16 +153,16 @@ class Lattice:
         self.__AssertDim()
         self.NSublat=4
         self.__AssertNSublat()
-        self.LatVec=np.array([[0.0,0.5,0.5],
-                              [0.5,0.0,0.5],
-                              [0.5,0.5,0.0]])
+        self.LatVec=np.array([[0.0,1.0,1.0],
+                              [1.0,0.0,1.0],
+                              [1.0,1.0,0.0]])
         self.SubLatVec=np.array([[0.0,0.0,0.0],
-                                 [0.0,0.25,0.25],
-                                 [0.25,0.0,0.25],
-                                 [0.25,0.25,0]])
-        self.ReciprocalLatVec=np.array([[-2*PI,  2*PI, 2*PI],
-                                        [2*PI, -2*PI, 2*PI],
-                                        [ 2*PI, 2*PI, -2*PI]])
+                                 [0.0,0.5,0.5],
+                                 [0.5,0.0,0.5],
+                                 [0.5,0.5,0]])
+        self.ReciprocalLatVec=np.array([[-PI, PI,  PI],
+                                        [PI, -PI,  PI],
+                                        [PI,  PI, -PI]])
 
         #P={"G": (0,0,0), "X":(0,2*PI,0),  "W":(PI,2*PI,0), \
            #"K":(1.5*PI,1.5*PI,0),"L": (PI,PI,PI), "U": (PI/2,2*PI,PI/2)}
@@ -172,7 +172,7 @@ class Lattice:
                 #P["G"], P["L"], P["U"], P["W"], P["L"], P["K"], P["U"], P["X"]]
         #self.PathName=[L["G"], L["X"], L["W"], L["K"],
                 #L["G"], L["L"], L["U"], L["W"], L["L"], L["K"], L["U"], L["X"]]
-        self.IndependtBZCenter=[(0,0,0),(2*PI,2*PI,-2*PI),(2*PI,2*PI,2*PI),(4*PI,0,0)]
+        self.IndependtBZCenter=[(0,0,0),(PI,PI,-PI),(PI,PI,PI),(2*PI,0,0)]
 
     def __AssertDim(self):
         Assert(len(self.L)==self.Dim, "Dimension {0} is expected for {1} Lattice, not {2}" \
