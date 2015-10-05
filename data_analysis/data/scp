@@ -1,5 +1,0 @@
-rm *.txt *.dat
-rm -r L*
-scp chen-huang-zhang@210.45.78.184:~/XXZ_code/data/*.txt .
-scp chen-huang-zhang@210.45.78.184:~/XXZ_code/data/*.dat .
-scp -r  chen-huang-zhang@210.45.78.184:~/XXZ_code/data/L* .
