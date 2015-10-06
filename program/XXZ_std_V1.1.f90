@@ -1480,7 +1480,7 @@
   SUBROUTINE measure
     implicit none
     integer :: i, j 
-    double precision :: TotalKinks
+    double precision :: TotalKinks, tmp
     logical :: flag
 
     !--Observables definition ----------------------------------------
@@ -1652,6 +1652,7 @@
     Correlator=Sz*SegmentState(Vertex1,1)/4.0
   end FUNCTION Correlator
 
+
   SUBROUTINE FrequencyCorrelator(Vertex, omega, ReCorr, ImCorr)
     !SzSz non-zero frequency correlator
     implicit none
@@ -1675,10 +1676,10 @@
 	    ReSz = ReSz + tmp
 	else
 	    tmp = SegmentState(Vertex, BeginSite)/domega
-	    !iphase = mod(int((domega*(EndTime-BeginTime))/2.0/Pi*(NPhase*1.d0)), NPhase)
-	    !ReSz = ReSz - tmp*ImExp(iphase)
-	    !ImSz = ImSz + tmp*ReExp(iphase)
-	    phase = domega*(EndTime-BeginTime)
+	    phase = domega*EndTime
+	    ReSz = ReSz + tmp*dsin(phase)
+	    ImSz = ImSz - tmp*dcos(phase)
+	    phase = domega*BeginTime
 	    ReSz = ReSz - tmp*dsin(phase)
 	    ImSz = ImSz + tmp*dcos(phase)
 	endif
@@ -1690,6 +1691,28 @@
     ReCorr=ReSz/2.d0
     ImCorr=ImSz/2.d0
   end SUBROUTINE FrequencyCorrelator
+
+  SUBROUTINE ImagTimeCorrelator(Vertex, tau, ReCorr, ImCorr)
+    !SzSz non-zero frequency correlator
+    implicit none
+    integer :: Vertex
+    double precision :: ReCorr, ImCorr
+    double precision :: tau, tmp
+    integer :: EndSite,BeginSite
+    double precision :: BeginTime, EndTime, phase
+    BeginSite = 1
+    BeginTime = KinkTime(Vertex, BeginSite)
+    EndSite=NextSite(Vertex,BeginSite)
+    EndTime = KinkTime(Vertex, EndSite)
+    do while(BeginSite/=2 .and. tau-EndTime>1.d-10)
+        BeginSite = EndSite
+	BeginTime = EndTime
+        EndSite = NextSite(Vertex,EndSite)
+	EndTime = KinkTime(Vertex, EndSite)
+    enddo
+    ReCorr=SegmentState(Vertex, BeginSite)/2.d0
+    ImCorr=0.d0
+  end SUBROUTINE ImagTimeCorrelator
 
   subroutine KOmegaCorrelator()
     !SzSz non-zero frequency correlator in momentum space
@@ -1738,9 +1761,31 @@
 	    ImKCorr = ImKCorr + ImCorr*ReKPhase(k, j) - ReCorr*ImKPhase(k, j)
 	endif
     enddo
-    GetKOmegaCorr = (ReKCorr**2.d0+ImKCorr**2.d0)/(Vol*1.d0)
+    GetKOmegaCorr = (ReKCorr**2.d0+ImKCorr**2.d0)/(Vol*Beta)
   end function GetKOmegaCorr
 
+  double precision function GetKTauCorr(k, tau)
+    !SzSz non-zero frequency correlator in momentum space
+    implicit none
+    double precision :: tau
+    integer :: i, j, l, k
+    double precision :: phase, ReCorr, ImCorr
+    integer :: iphase
+    double precision :: ReKCorr, ImKCorr
+    ReKCorr = 0.d0
+    ImKCorr = 0.d0
+    do j = 1, Vol
+	call ImagTimeCorrelator(j, tau, ReCorr, ImCorr)
+	if(k==1) then
+	    ReKCorr = ReKCorr + ReCorr
+	    ImKCorr = ImKCorr + ImCorr
+	else
+	    ReKCorr = ReKCorr + ReCorr*ReKPhase(k, j) + ImCorr*ImKPhase(k, j)
+	    ImKCorr = ImKCorr + ImCorr*ReKPhase(k, j) - ReCorr*ImKPhase(k, j)
+	endif
+    enddo
+    GetKTauCorr = (ReKCorr**2.d0+ImKCorr**2.d0)/(Vol*1.d0)
+  end function GetKTauCorr
 
 
   double precision FUNCTION Susceptibility_total()
@@ -1869,6 +1914,8 @@
     double precision :: err,nor
 
     nor  = (NmeasCorr*1.d0)/(iblck*NSamp*1.d0)
+
+    open(9,file=file2,access="append") 
     open(9,file=file2) 
     write(9, *) "##Num=", iblck
     write(9, *) "{ 'Correlations': [ ["
@@ -1891,6 +1938,7 @@
     write(9, *) "]]} "
     close(9)
 
+    !open (10,file=file3,access="append") 
     open (10,file=file3) 
     write(10, *) "##Num=", iblck
     write(10, *) "##k=", Momentum(1,:)
@@ -1902,6 +1950,7 @@
     write(10, *) 
     close(10)
 
+    !open(11, file=file5,access="append")
     open(11, file=file5)
     write(11, *) "##Num=", iblck
     write(11, *) "##k=", Momentum(2, :)

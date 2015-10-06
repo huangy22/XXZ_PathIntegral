@@ -18,7 +18,14 @@ def LoadDict(filename):
     if filename[-4:]!=".txt":
         filename+=".txt"
     with open(filename, "r") as f:
-        return eval(f.read())
+        result = ''
+        for line in f.readlines():
+            line = line.strip()              
+            if not len(line) or line.startswith('#'):
+                continue                    
+            result=result+line 
+        return eval(result)
+
 
 def SaveBigDict(filename, root):
     if filename[-4:]!=".hkl":
