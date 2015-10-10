@@ -100,10 +100,9 @@
     character(8 ), parameter :: ident = 'hs_sqa 0'             ! identifier
     character(12), parameter :: file1 = 'hs_sqa0.dat'          ! datafile
     character(8), parameter ::  ident2 = 'sta_corr'            ! identifier
-    character(100)  :: file2        ! static correlation
-    character(100)  :: file3        ! frequency correlator 1
-    character(100)  :: file5        ! frequency correlator 2
-    character(100)  :: file4        ! middle blocks
+    character(100)  :: statfile         ! static correlation
+    character(100)  :: midfile          ! middle blocks
+    character(100),allocatable  :: komegafiles(:), ktaufiles(:)    ! frequency correlator 1
     character(100) :: file_config
     character(100) :: file_config2
     !-----------------------------------------------------------------
@@ -117,8 +116,8 @@
     !-- Observables --------------------------------------------------
     !! THIS IS PROJECT-DEPENDENT 
     integer, parameter :: NPhase = 100
-    integer, parameter :: NObs_b = 18                         ! #basic observables
-    integer, parameter :: NObs_c = 3                          ! #composite observables
+    integer, parameter :: NObs_b = 23                         ! #basic observables
+    integer, parameter :: NObs_c = 5                          ! #composite observables
     integer, parameter :: NObs   = NObs_b+NObs_c              ! Total # observables
     !-----------------------------------------------------------------
 
@@ -131,6 +130,7 @@
     double precision, allocatable :: Momentum(:,:)                   ! k list
     integer :: Nk
     double precision, allocatable :: DynamicalCorr(:,:)      ! spin-spin correlations in k-omegarepresentation
+    double precision, allocatable :: CorrKTau(:,:)      ! spin-spin correlations in k-omegarepresentation
     double precision, allocatable :: ReKPhase(:,:), ImKPhase(:, :)
     !----------------------------------------------------------------
 
@@ -224,6 +224,8 @@
     integer :: itoss,isamp,iblck,i,k,Site,Low
     character(99) :: filename
 
+    Nk = 2
+
     print *, 'Dim'
     read *, Dim
 
@@ -232,11 +234,22 @@
     allocate(dWR(1:Dim))
     allocate(WR(1:Dim))
     allocate(WindR(1:Dim))
+    allocate(komegafiles(1:Nk))
+    allocate(ktaufiles(1:Nk))
     NSub = 1
     nnb = 2*Dim
 
-    print *, 'Lattice, L, beta, J,Q,Hz,Ntoss, Nsamp, Nswee, NSave, Seed, NBlck, IsLoad, Outputfile, file2, file3, file4, file5'
-    read  *,  LatticeName,L(:),beta,JJ,Q,ExternalField,Ntoss,Nsamp,Nswee,NSave,Seed,NBlck,IsLoad,filename,file2,file3,file4, file5
+    print *, 'Lattice, L, beta, J,Q,Hz,Ntoss, Nsamp, Nswee, NSave, Seed, NBlck, IsLoad, Outputfile, files:'
+    read  *,  LatticeName,L(:),beta,JJ,Q,ExternalField,Ntoss,Nsamp,Nswee,NSave,Seed,NBlck, &
+    & IsLoad,filename,statfile, midfile
+
+    do i = 1, Nk
+	read *, komegafiles(i)
+    enddo
+    do i = 1, Nk
+	read *, ktaufiles(i)
+    enddo
+    print *, statfile, midfile, komegafiles(1)
 
     !!!!!!Treatments for lattices with multiple sublattices!!!!!!!!!!
     if(LatticeName=='Pyrochlore') then
@@ -252,6 +265,7 @@
     do i = 1, Dim
 	MxV = MxV*MxL
     enddo
+
     MxV = MxV*NSub
 
     Vol=1
@@ -276,8 +290,8 @@
     !!!!!Jzz
     JJ=JJ/4.0
 
-    !!!!!J_porp= 0.5*Jxx(Jyy)
-    Q=Q/8.0
+    !!!!Jxx
+    Q=Q/4.0
     QQ=abs(Q)
 
     !!!!!H
@@ -349,8 +363,8 @@
       if(mod(iblck, NSave)==0) then
 	  call write2file_corr(iblck)
           call midwrite2file(iblck)
-          !call saveconfig
-	  print*, iblck,"save data and configuration"
+	  !call saveconfig
+          print*, iblck,"save data and configuration"
       endif
     enddo
     close(18)
@@ -362,7 +376,6 @@
     call write2file
     call saveconfig
     call t_elapse(4)         ! '4' total time 
-
 
   CONTAINS
 
@@ -434,17 +447,17 @@
     endif
     
     do i = 1, Dim
-	if(L(i)<=2) then
-	    write(6,*) 'L must bigger than 2'
-	endif
+        if(L(i)<=2) then
+            write(6,*) 'L must bigger than 2'
+        endif
 
-	if(L(i)-L(i)/2*2==1) then
-	    write(6,*) 'Give me even L,please!'
-	endif
+        if(L(i)-L(i)/2*2==1) then
+            write(6,*) 'Give me even L,please!'
+        endif
 
-	if(L(i)>MxL) then
-	  write(6,*) 'L < MxL?';                              stop
-	endif
+        if(L(i)>MxL) then
+          write(6,*) 'L < MxL?';                              stop
+        endif
     enddo
 
     !if(Ntoss==0) then
@@ -472,7 +485,7 @@
     write(6,45) Beta
     45 format(' Simulation is on Beta=',f12.8,2x,'Time Line.')
 
-    write(6,41) JJ, QQ*2.0, ExternalField
+    write(6,41) JJ, QQ, ExternalField
     41 format(' Coupling Jz is',f12.8, ', Jx is', f12.8, ', H is', f12.8)
 
     write(6,42) Ntoss*NBlck
@@ -493,18 +506,19 @@
     !-- measurement initialization -----------------------------------
     Norm = 1.d0/Vol/beta
 
-    Nk = 2
     allocate(Momentum(1:Nk, 1:Dim))
     Momentum(1, :) = (/0.d0, 0.d0, 0.d0/)
-    Momentum(2, :) = (/0.d0, 0.d0, 2.d0*Pi/)
+    Momentum(2, :) = (/Pi, Pi, Pi/)
 
     allocate(Quan(1:NObs_b))
     allocate(Obs(1:NObs, 1:NBlck));       Obs = 0.d0
     allocate(Ave(1:NObs), Dev(1:NObs), Cor(1:NObs))
     allocate(StaticCorr(1:Vol*NSub))
     allocate(DynamicalCorr(1:Nk, 0:MxOmega))
+    allocate(CorrKTau(1:Nk, 0:MxOmega))
     StaticCorr = 0.d0
     DynamicalCorr = 0.d0
+    CorrKTau = 0.d0
 
     allocate(ReKPhase(1:Nk, 1:Vol))
     allocate(ImKPhase(1:Nk, 1:Vol))
@@ -525,19 +539,33 @@
 
   SUBROUTINE def_lattice
     implicit none
-    integer :: x, y, z, k, xm, ym, zm, xp, yp, zp, tmp
+    integer :: x, y, z, k, xm, ym, zm, xp, yp, zp, tmp,sit
     integer :: ix, iy, iz, ixp, iyp, izp, ixm, iym, izm, vec(3), site(4), itmp
+
     !!!!************DEFINITION FOR LATTICES****************************
     if(LatticeName=='Cubic') then
 	Sub(:) = 1
 	if(Dim==2) then
+	  !RealVectors
+	  LatticeVector(1,:) = (/1.0, 0.0/)
+	  LatticeVector(2,:) = (/0.0, 1.0/)
+	  SubVector(1,:) = (/0.0, 0.0/)
+
+	  sit=0
+	  do iy=1,L(2)
+	    do ix=1,L(1)
+		RealVector(sit,:)=(ix-1)*LatticeVector(1,:)+(iy-1)*LatticeVector(2,:)
+		sit = sit+1
+	    enddo
+	  enddo
+
 	  k = 0
 	  do y = 1,L(2)
 	    do x = 1,L(1)
 	      k = k + 1
 
-	      xm =  -1 ;      if(x== 1) xm = L(1)-1
-	      xp =  +1 ;      if(x==L(1)) xp = 1-L(1)
+	      xm =  -1 ;        if(x== 1) xm = L(1)-1
+	      xp =  +1 ;        if(x==L(1)) xp = 1-L(1)
 
 	      ym =  -L(1);      if(y== 1) ym = Vol-L(1)
 	      yp =  +L(1);      if(y==L(2)) yp = L(1)-Vol
@@ -558,9 +586,24 @@
 
 	  !-- auxillary variables to measure wrapping probability-----------
 	  dr(:,:,:)=0
-	  dr(1,1, 1) = 1;  dr(4,1, 1) =-1; dr(2,1, 1) = 0; dr(3,1, 1) = 0
-	  dr(1,1, 2) = 0;  dr(4,1, 2) = 0; dr(2,1, 2) = 1; dr(3,1, 2) =-1
+	  dr(1,1, 1) = 1;  dr(4,1, 1) =-1
+	  dr(2,1, 2) = 1;  dr(3,1, 2) =-1
 	else if(Dim==3) then
+	  !RealVectors
+	  LatticeVector(1,:) = (/1.0, 0.0, 0.0/)
+	  LatticeVector(2,:) = (/0.0, 1.0, 0.0/)
+	  LatticeVector(3,:) = (/0.0, 0.0, 1.0/)
+	  SubVector(1,:) = (/0.0, 0.0, 0.0/)
+	  sit=0
+	  do iz=1, L(3)
+	    do iy=1,L(2)
+	      do ix=1,L(1)
+	        RealVector(sit,:)=(ix-1)*LatticeVector(1,:)+(iy-1)*LatticeVector(2,:)+(iz-1)*LatticeVector(3,:)
+	        sit = sit+1
+	      enddo
+	    enddo
+	  enddo
+
 	  k = 0
 	  do z = 1,L(3)
 	    do y = 1,L(2)
@@ -593,6 +636,7 @@
 	dr(2,1, 2) = 1;   dr(5,1, 2) = -1
 	dr(3,1, 3) = 1;   dr(6,1, 3) = -1
       endif
+
     else if(LatticeName=='Pyrochlore') then
       !RealVectors
       LatticeVector(1,:) = (/0.0, 1.0, 1.0/)
@@ -706,6 +750,7 @@
       enddo
       
       !-- auxillary variables to measure wrapping probability-----------
+      !-- dr(nnb, sublattice of the target site, x/y/z)-----------------
       dr(:,:,:) = 0
       dr(1,1, 1) = 0;   dr(1,1, 2) =  1;   dr(1,1, 3) =  1
       dr(4,1, 1) = 0;   dr(4,1, 2) = -1;   dr(4,1, 3) = -1 
@@ -768,14 +813,12 @@
     integer, intent(in) :: Site
     double precision, intent(out) :: Vector(1:Dim)
     integer :: i, sub, coord(1:Dim)
-    if(LatticeName=='Pyrochlore') then
-	call GetVector(Site, coord, sub)
-	Vector(:) = 0.0
-	do i = 1, Dim
-	    Vector = Vector+coord(i)*LatticeVector(i,:)
-	enddo
-	Vector = Vector+ SubVector(sub,:)
-    endif
+    call GetVector(Site, coord, sub)
+    Vector(:) = 0.0
+    do i = 1, Dim
+	Vector = Vector+coord(i)*LatticeVector(i,:)
+    enddo
+    Vector = Vector+ SubVector(sub,:)
     return
   END SUBROUTINE GetRealVector
 
@@ -1494,23 +1537,33 @@
     else
         W0=0;W1=1
     endif
-    Quan( 1)= potential_energy()
-    Quan( 2)= kink_number(TotalKinks)
-    Quan( 3)= (Quan(1)-Quan(2))/beta/Vol
-    Quan( 4)= Quan(3)**2
-    Quan( 5)= GetKOmegaCorr(1, 0)
-    Quan( 6)= GetKOmegaCorr(1, MXOmega/2)
-    Quan( 7)= GetKOmegaCorr(2, 0)
-    Quan( 8)= GetKOmegaCorr(2, MXOmega/2)
-    Quan( 9)= (Wt)**2
-    Quan(10)= Quan( 9)**2
-    Quan(11)= Quan(10)*Vol  !Spatial Susceptibility 
-    Quan(12)= SM()**2       !Staggerd Magnetization square
-    Quan(13)= Quan(12)**2
+    Quan( 1)= potential_energy()       !! Beta*potential energy
+    Quan( 2)= kink_number(TotalKinks)  !! Beta*kinetic energy
+    Quan( 3)= Quan(1)-Quan(2)          !! Beta*Energy
+    Quan( 4)= Quan(3)**2.d0            !! Energy^2
+    Quan( 5)= (WR(1))**2.d0            !! Winding on x
+    Quan( 6)= (WR(2))**2.d0            !! Winding on y
+    if(Dim==3) then
+	Quan( 7)= (WR(3))**2.d0            !! Winding on z
+    else
+	Quan( 7)= 0.d0            !! Winding on z
+    endif
+    Quan( 8)= sum((WR(:))**2.d0)/Beta/(1.d0*Dim) !! stiffness
+    Quan( 9)= (Wt)**2                  !! winding on tau==Magnetization
+    Quan(10)= Quan( 9)**2              !! M^4
+    Quan(11)= Quan(10)*Vol             !! Spatial Susceptibility 
+    Quan(12)= SM()**2                  !! Staggerd Magnetization 
+    Quan(13)= Quan(12)**2              !! staggered M^4
     Quan(14)= Quan(13)*Vol  !Spatial Susceptibility 
     Quan(15)= Correlator(1,1)
     Quan(16)= Correlator(1,2)
     Quan(17)= Correlator(1,Vol/2)
+    Quan(18)= W0
+    Quan(19)= W1
+    Quan(20)= GetKTauCorr(2, 0.1d0)
+    Quan(21)= GetKTauCorr(2, Beta/2.d0)
+    Quan(22)= GetKOmegaCorr(2, 0)
+    Quan(23)= GetKOmegaCorr(2, MXOmega/2)
   END SUBROUTINE measure
 
   SUBROUTINE measure_Corr
@@ -1522,6 +1575,11 @@
 	enddo
     enddo
     call KOmegaCorrelator()
+    do j = 1, Nk
+	do i = 0, MxOmega
+	    CorrKTau(j, i) = CorrKTau(j, i) + GetKTauCorr(j, (i*Beta)/(MxOmega*1.0))
+	enddo
+    enddo
   END SUBROUTINE measure_Corr
 
   double precision FUNCTION potential_energy()
@@ -1559,8 +1617,8 @@
     do i=1,Vol
         kink_number=kink_number+SegmentNum(i)
     enddo
-    TotalKinks=(kink_number-Vol)/2
-    kink_number=(kink_number-Vol)/2
+    TotalKinks=(kink_number-Vol)/2.0
+    kink_number=TotalKinks
   end FUNCTION kink_number
 
   SUBROUTINE winding_number()
@@ -1731,8 +1789,8 @@
 	    ReKCorr(1) = ReKCorr(1) + ReCorr
 	    ImKCorr(1) = ImKCorr(1) + ImCorr
 	    do i = 2, Nk
-		ReKCorr(i) = ReKCorr(i) + ReCorr*ReKPhase(i, j) + ImCorr*ImKPhase(i, j)
-		ImKCorr(i) = ImKCorr(i) + ImCorr*ReKPhase(i, j) - ReCorr*ImKPhase(i, j)
+		ReKCorr(i) = ReKCorr(i) + ReCorr*ReKPhase(i, j) - ImCorr*ImKPhase(i, j)
+		ImKCorr(i) = ImKCorr(i) + ImCorr*ReKPhase(i, j) + ReCorr*ImKPhase(i, j)
 	    enddo
 	enddo
 	do i = 1, Nk
@@ -1776,6 +1834,8 @@
     ImKCorr = 0.d0
     do j = 1, Vol
 	call ImagTimeCorrelator(j, tau, ReCorr, ImCorr)
+	ReCorr = ReCorr*SegmentState(1, 1)/2.d0
+	ImCorr = ImCorr*SegmentState(1, 1)/2.d0
 	if(k==1) then
 	    ReKCorr = ReKCorr + ReCorr
 	    ImKCorr = ImKCorr + ImCorr
@@ -1784,7 +1844,7 @@
 	    ImKCorr = ImKCorr + ImCorr*ReKPhase(k, j) - ReCorr*ImKPhase(k, j)
 	endif
     enddo
-    GetKTauCorr = (ReKCorr**2.d0+ImKCorr**2.d0)/(Vol*1.d0)
+    GetKTauCorr = ReKCorr
   end function GetKTauCorr
 
 
@@ -1827,14 +1887,28 @@
     Ave(NObs_b+1:NObs) = 0.d0
 
     !-- Q1=<C1>^2/<C1^2> ---------------------------------------------
-    Ave(NObs_b+1)=1-Ave(10)/Ave( 9)**2/3
-    Ave(NObs_b+2)=1-Ave(13)/Ave(12)**2/3
-    Ave(NObs_b+3)=Ave(4)-Ave(3)**2
+    if(abs(Ave(9))>eps) then
+	Ave(NObs_b+1)=(Ave(5)+Ave(6)+Ave(7))/Ave(9)/(1.0*Dim)
+    else
+	Ave(NObs_b+1)=0
+    endif
+    Ave(NObs_b+2)=Ave(18)/Ave(19)
+    Ave(NObs_b+3)=1.0-Ave(10)/Ave( 9)**2/3.0
+    Ave(NObs_b+4)=1.0-Ave(13)/Ave(12)**2/3.0
+    Ave(NObs_b+5)=(Ave(4)-Ave(3)**2)/Vol
 
     !-- Obs(j,k) series ----------------------------------------------
-    Obs(NObs_b+1,:)=1-Obs(10,:)/Obs( 9,:)**2/3
-    Obs(NObs_b+2,:)=1-Obs(13,:)/Obs(12,:)**2/3
-    Obs(NObs_b+3,:)=Obs(4,:)-Obs(3,:)**2
+    do k=1,NBlck
+        if(abs(Obs(9,k))>eps) then
+            Obs(NObs_b+1,k)=(Obs(5,k)+Obs(6,k)+Obs(7,k))/Obs(9,k)/(1.0*Dim)
+        else
+            Obs(NObs_b+1,k)=0.0
+        endif
+    enddo
+    Obs(NObs_b+2,:)=Obs(18,:)/Obs(19,:)
+    Obs(NObs_b+3,:)=1.0-Obs(10,:)/Obs( 9,:)**2/3.0
+    Obs(NObs_b+4,:)=1.0-Obs(13,:)/Obs(12,:)**2/3.0
+    Obs(NObs_b+5,:)=(Obs(4,:)-Obs(3,:)**2)/Vol
 
    return
   END SUBROUTINE cal_Obs_comp
@@ -1855,13 +1929,14 @@
     double precision :: err
 
     open(8,file=file1, access='append') 
-    write(8, *);          write(6,*)
+    write(8, *)
+    write(6, *)
 
     if(Dim==2) then
-	write(8,40) ident, L(:), beta, JJ*4.0, Q*4.0, Seed, TotSamp
+	write(8,40) ident, L(:), beta, JJ*4.0, Q*2.0, Seed, TotSamp
 	40 format(a8,2i6,3f10.6,i12,i8)
     else if(Dim==3) then
-	write(8,46) ident, L(:), beta, JJ*4.0, Q*4.0, Seed, TotSamp
+	write(8,46) ident, L(:), beta, JJ*4.0, Q*2.0, Seed, TotSamp
 	46 format(a8,3i6,3f10.6,i12,i8)
     endif
 
@@ -1893,11 +1968,11 @@
   SUBROUTINE midwrite2file(iblck)
     implicit none
     integer :: iblck,i, j, start
-    open (8,file=file4, access='append') 
+    open (8,file=midfile, access='append') 
     start=iblck-NSave+1
     do i=start,iblck
         write(8,*)
-        write(8,50) ident, L(1), beta, JJ*4.0, Q*16.0, Seed, NSamp, i
+        write(8,50) ident, L(1), beta, JJ*4.0, Q*2.0, Seed, NSamp, i
         50 format(a8,i6,3f10.6,i12,i8,i8)
         do j = 1, NObs_b
           write(8,51) j,Obs(j,i)
@@ -1915,8 +1990,8 @@
 
     nor  = (NmeasCorr*1.d0)/(iblck*NSamp*1.d0)
 
-    open(9,file=file2,access="append") 
-    open(9,file=file2) 
+    !open(9,file=file,access="append") 
+    open(9,file=statfile) 
     write(9, *) "##Num=", iblck
     write(9, *) "{ 'Correlations': [ ["
     do j = 1, Vol
@@ -1938,29 +2013,31 @@
     write(9, *) "]]} "
     close(9)
 
-    !open (10,file=file3,access="append") 
-    open (10,file=file3) 
-    write(10, *) "##Num=", iblck
-    write(10, *) "##k=", Momentum(1,:)
-    write(10,*) 0.d0, nor*DynamicalCorr(1, 0), Dev(5)*sqrt(NmeasCorr*1.d0)
-    err = Dev(6)*sqrt(NmeasCorr*1.d0)
-    do j = 1, MxOmega
-      write(10,*) 2.d0*Pi*(j*1.d0)/Beta, nor*DynamicalCorr(1, j), err
+    do k =1 ,Nk
+	!open (10,file=komegafiles(k),access="append") 
+	open (10,file=komegafiles(k)) 
+	write(10, *) "##Num=", iblck
+	write(10, *) "##k=", Momentum(k,:)
+	write(10,*) 0.d0, nor*DynamicalCorr(k, 0), Dev(18+2*k)*sqrt(NmeasCorr*1.d0)
+	err = Dev(19+2*k)*sqrt(NmeasCorr*1.d0)
+	do j = 1, MxOmega
+	    write(10,*) 2.d0*Pi*(j*1.d0)/Beta, nor*DynamicalCorr(k, j), err
+	enddo
+	write(10, *) 
+	close(10)
     enddo
-    write(10, *) 
-    close(10)
 
-    !open(11, file=file5,access="append")
-    open(11, file=file5)
-    write(11, *) "##Num=", iblck
-    write(11, *) "##k=", Momentum(2, :)
-    write(11,*) 0.d0, nor*DynamicalCorr(2, 0), Dev(7)*sqrt(NmeasCorr*1.d0)
-    err = Dev(8)*sqrt(NmeasCorr*1.d0)
-    do j = 1, MxOmega
-      write(11,*) 2.d0*Pi*(j*1.d0)/Beta, nor*DynamicalCorr(2, j), err
+    do k = 1, Nk
+	open(12, file=ktaufiles(k))
+	write(12, *) "##Num=", iblck
+	write(12, *) "##k=", Momentum(k, :)
+	do j = 0, MxOmega
+	    write(12,*) (j*Beta)/(MxOmega*1.0), nor*CorrKTau(k, j), 0.d0
+	enddo
+	write(12, *) 
+	close(12)
     enddo
-    write(11, *) 
-    close(11)
+
     return
   END SUBROUTINE write2file_corr
 
@@ -2037,7 +2114,7 @@
       DO j = 1, NObs_b
         devp = 0.d0;  Cor(j) = 0.d0;  Dev(j) = 0.d0
         do k = 1,  NBlck
-          devn   = Obs(j,k)-Ave(j)
+	  devn   = Obs(j,k)-Ave(j)
           Dev(j) = Dev(j)+devn*devn
           Cor(j) = Cor(j)+devn*devp
           devp   = devn

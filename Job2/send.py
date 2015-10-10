@@ -4,8 +4,9 @@ import os, sys
 IsCluster=False
 sourcedir="../program/"
 execute="XXZ"
-Dim = 3
-Latticename = "Pyrochlore"
+Dim = 2
+#Latticename = "Pyrochlore"
+Latticename = "Cubic"
 homedir=os.getcwd()
 filelist=os.listdir(sourcedir)
 sourcename=[elem for elem in filelist if elem[0:3]=="XXZ" and elem[-3:]=="f90"]
@@ -54,7 +55,7 @@ for eachline in inlist:
             item.append("corr_k002PI_"+str(j)+".txt")
             stri=" ".join(item)
             f.write(str(Dim)+"\n")
-            f.write("Pyrochlore "+stri)
+            f.write(Latticename+" "+stri)
             f.close()
 
             if IsCluster==False:

@@ -5,7 +5,9 @@ IsCluster=False
 sourcedir="../program/"
 execute="XXZ"
 Dim = 3
-Latticename = "Pyrochlore"
+#Latticename = "Pyrochlore"
+Latticename = "Cubic"
+Nk = 2
 homedir=os.getcwd()
 filelist=os.listdir(sourcedir)
 sourcename=[elem for elem in filelist if elem[0:3]=="XXZ" and elem[-3:]=="f90"]
@@ -48,13 +50,17 @@ for eachline in inlist:
             item.append(str(nblck))
             item.append(str(isload))
             item.append("_".join(para[2:-1])+"_"+str(j)+".cnf")
-            item.append("static_corr_"+str(j)+".txt")
-            item.append("corr_k000_"+str(j)+".txt")
-            item.append("mid_hs_sqa0_"+str(j)+".txt")
-            item.append("corr_k002PI_"+str(j)+".txt")
+            item.append("static_corr_"+str(i)+"_"+str(j)+".txt")
+            item.append("mid_hs_sqa0_"+str(i)+"_"+str(j)+".txt")
+            for k in range(Nk):
+                item.append("\n")
+                item.append("corr_k"+str(k+1)+"_"+str(i)+"_"+str(j)+".txt")
+            for k in range(Nk):
+                item.append("\n")
+                item.append("corr_k"+str(k+1)+"_tau_"+str(i)+"_"+str(j)+".txt")
             stri=" ".join(item)
             f.write(str(Dim)+"\n")
-            f.write("Pyrochlore "+stri)
+            f.write(Latticename+" "+stri)
             f.close()
 
             if IsCluster==False:

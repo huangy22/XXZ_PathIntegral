@@ -1,9 +1,9 @@
 #!/usr/bin/python
 import os
 n=100
-Beta = 5.0
+Beta = 20.0
 L = 4
-path = "../data/L4_5.0_0.2/"
+path = "../data/L4_20.0_0.2/"
 os.system("rm *s_sqa*.dat")
 os.system("rm corr_*.txt")
 os.system("rm static_cor*.txt")
