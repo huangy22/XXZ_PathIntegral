@@ -47,9 +47,9 @@
     read  *,  whichone,MinBlck
 
     if(whichone<10) then
-        write(file3,"(a12,i1,a4)") "mid_hs_sqa0_",whichone,".txt"
+        write(file3,"(a12,i1,a4)") "mid_hs_sqa0_1_",whichone,".txt"
     else
-        write(file3,"(a12,i2,a4)") "mid_hs_sqa0_",whichone,".txt"
+        write(file3,"(a12,i2,a4)") "mid_hs_sqa0_1_",whichone,".txt"
     endif
 
     allocate(Quan(1:NObs_b))

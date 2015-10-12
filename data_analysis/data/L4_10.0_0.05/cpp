@@ -1,0 +1,3 @@
+cp ../../../Job1/mid* .
+cp ../../../Job1/corr_k* .
+cp ../../../Job1/static_corr* .

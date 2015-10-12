@@ -1,4 +1,4 @@
-  !******************************************************************
+  
   !This code is for XXZ model with hamiltonian:
   !H=sum (-J*S^z_i*S^z_j-Q*(S^x_i*S^x_j+S^y_i*S^y_j))
   !(1) J>0,Q>0: Ferromagnetic
@@ -752,33 +752,35 @@
       !-- auxillary variables to measure wrapping probability-----------
       !-- dr(nnb, sublattice of the target site, x/y/z)-----------------
       dr(:,:,:) = 0
-      dr(1,1, 1) = 0;   dr(1,1, 2) =  1;   dr(1,1, 3) =  1
-      dr(4,1, 1) = 0;   dr(4,1, 2) = -1;   dr(4,1, 3) = -1 
-      dr(2,1, 1) = 1;   dr(2,1, 2) =  0;   dr(2,1, 3) =  1
-      dr(5,1, 1) =-1;   dr(5,1, 2) =  0;   dr(5,1, 3) = -1 
-      dr(3,1, 1) = 1;   dr(3,1, 2) =  1;   dr(3,1, 3) =  0    
-      dr(6,1, 1) =-1;   dr(6,1, 2) = -1;   dr(6,1, 3) =  0     
+      dr(1,1, 1) = 1;   dr(1,1, 2) =  0;   dr(1,1, 3) =  0
+      dr(4,1, 1) =-1;   dr(4,1, 2) =  0;   dr(4,1, 3) =  0 
+      dr(2,1, 1) = 0;   dr(2,1, 2) =  1;   dr(2,1, 3) =  0
+      dr(5,1, 1) = 0;   dr(5,1, 2) = -1;   dr(5,1, 3) =  0 
+      dr(3,1, 1) = 0;   dr(3,1, 2) =  0;   dr(3,1, 3) =  1    
+      dr(6,1, 1) = 0;   dr(6,1, 2) =  0;   dr(6,1, 3) = -1     
 
-      dr(1,2, 1) = 0;   dr(1,2, 2) =  1;   dr(1,2, 3) =  1
-      dr(4,2, 1) = 0;   dr(4,2, 2) = -1;   dr(4,2, 3) = -1 
-      dr(2,2, 1) = 1;   dr(2,2, 2) = -1;   dr(2,2, 3) =  0
-      dr(5,2, 1) =-1;   dr(5,2, 2) =  1;   dr(5,2, 3) =  0 
-      dr(3,2, 1) = 1;   dr(3,2, 2) =  0;   dr(3,2, 3) = -1
-      dr(6,2, 1) =-1;   dr(6,2, 2) =  0;   dr(6,2, 3) =  1 
+      dr(1,2, 1) = 1;   dr(1,2, 2) =  0;   dr(1,2, 3) =  0
+      dr(4,2, 1) =-1;   dr(4,2, 2) =  0;   dr(4,2, 3) =  0 
+      dr(2,2, 1) =-1;   dr(2,2, 2) =  1;   dr(2,2, 3) =  0
+      dr(5,2, 1) = 1;   dr(5,2, 2) = -1;   dr(5,2, 3) =  0 
+      dr(3,2, 1) =-1;   dr(3,2, 2) =  0;   dr(3,2, 3) =  1
+      dr(6,2, 1) = 1;   dr(6,2, 2) =  0;   dr(6,2, 3) = -1 
 
-      dr(1,3, 1) = 1;   dr(1,3, 2) =  0;   dr(1,3, 3) =  1
-      dr(4,3, 1) =-1;   dr(4,3, 2) =  0;   dr(4,3, 3) = -1 
-      dr(2,3, 1) = 1;   dr(2,3, 2) = -1;   dr(2,3, 3) =  0
-      dr(5,3, 1) =-1;   dr(5,3, 2) =  1;   dr(5,3, 3) =  0 
-      dr(3,3, 1) = 0;   dr(3,3, 2) =  1;   dr(3,3, 3) = -1
-      dr(6,3, 1) = 0;   dr(6,3, 2) = -1;   dr(6,3, 3) =  1 
+      dr(1,3, 1) = 0;   dr(1,3, 2) =  1;   dr(1,3, 3) =  0
+      dr(4,3, 1) = 0;   dr(4,3, 2) = -1;   dr(4,3, 3) =  0 
+      dr(2,3, 1) =-1;   dr(2,3, 2) =  1;   dr(2,3, 3) =  0
+      dr(5,3, 1) = 1;   dr(5,3, 2) = -1;   dr(5,3, 3) =  0 
+      dr(3,3, 1) = 0;   dr(3,3, 2) = -1;   dr(3,3, 3) =  1
+      dr(6,3, 1) = 0;   dr(6,3, 2) =  1;   dr(6,3, 3) = -1 
 
-      dr(1,4, 1) = 1;   dr(1,4, 2) =  1;   dr(1,4, 3) =  0
-      dr(4,4, 1) =-1;   dr(4,4, 2) = -1;   dr(4,4, 3) =  0 
-      dr(2,4, 1) = 1;   dr(2,4, 2) =  0;   dr(2,4, 3) = -1
-      dr(5,4, 1) =-1;   dr(5,4, 2) =  0;   dr(5,4, 3) =  1 
-      dr(3,4, 1) = 0;   dr(3,4, 2) =  1;   dr(3,4, 3) = -1
-      dr(6,4, 1) = 0;   dr(6,4, 2) = -1;   dr(6,4, 3) =  1 
+      dr(1,4, 1) = 0;   dr(1,4, 2) =  0;   dr(1,4, 3) =  1
+      dr(4,4, 1) = 0;   dr(4,4, 2) =  0;   dr(4,4, 3) = -1 
+      dr(2,4, 1) =-1;   dr(2,4, 2) =  0;   dr(2,4, 3) =  1
+      dr(5,4, 1) = 1;   dr(5,4, 2) =  0;   dr(5,4, 3) = -1 
+      dr(3,4, 1) = 0;   dr(3,4, 2) = -1;   dr(3,4, 3) =  1
+      dr(6,4, 1) = 0;   dr(6,4, 2) =  1;   dr(6,4, 3) = -1 
+
+      call PrintLattice
     endif
   END SUBROUTINE def_lattice
 
@@ -808,20 +810,6 @@
     endif
   END SUBROUTINE
 
-  SUBROUTINE GetRealVector(Site, Vector)
-    implicit none
-    integer, intent(in) :: Site
-    double precision, intent(out) :: Vector(1:Dim)
-    integer :: i, sub, coord(1:Dim)
-    call GetVector(Site, coord, sub)
-    Vector(:) = 0.0
-    do i = 1, Dim
-	Vector = Vector+coord(i)*LatticeVector(i,:)
-    enddo
-    Vector = Vector+ SubVector(sub,:)
-    return
-  END SUBROUTINE GetRealVector
-
   SUBROUTINE GetSite(Site, Vector, Sub)
     implicit none
     integer, intent(out) :: Site
@@ -836,6 +824,42 @@
 	Site = ((Vector(3)-1)*L(1)*L(2)+(Vector(2)-1)*L(1)+Vector(1)-1)*NSub+Sub
     endif
   END SUBROUTINE
+
+  SUBROUTINE PrintLattice()
+    implicit none
+    integer :: i, j, k, nb
+    double precision :: deltar(3)
+    if(LatticeName=="Pyrochlore") then
+	open(18,file='coord.txt');  
+	write(18,*) "{'Points': ["
+	DO j=1, Vol 
+	    write(18,*) "[(", RealVector(j,1), ",", RealVector(j,2), ",", RealVector(j,3), "), ", Sub(j), "],"
+	END DO 
+	write(18,*) "], "
+	write(18, *) "'Interactions': ["
+	DO j=1, Vol 
+	    DO nb = 1,nnb
+		write(18,*) "[", j, ", ",  Ngs(nb, j), "],"
+		deltar(:) = RealVector(Ngs(nb, j),:)-RealVector(j, :)
+		do i = 1, Dim
+		    if(deltar(i)>=L(i)-0.5) then
+			deltar(i) = deltar(i) -L(i)
+		    endif
+		    if(deltar(i)<=-(L(i)-0.5)) then
+			deltar(i) = deltar(i) +L(i)
+		    endif
+		    deltar(i) = deltar(i)-sum(dr(nb, Sub(j), :)*LatticeVector(:, i)/2.0)
+		    if(deltar(i)/=0) then
+			print *, j, nb, i, deltar(i)
+		    endif
+		enddo
+	    ENDDO
+	END DO 
+	write(18,*) "], "
+	write(18,*) "}"
+	close(18)
+    endif
+  END SUBROUTINE PrintLattice
 
   !==============Simulation ==========================================
   !! THIS IS PROJECT-DEPENDENT 
@@ -872,9 +896,14 @@
                 enddo
             endif
 	    do k = 1, Dim
-		WR(k)=WR(k)+(dWR(k)/L(k))
+		if(LatticeName=="Pyrochlore") then
+		    WR(k)=WR(k)+(dWR(k)/2.0/L(k))
+		else
+		    WR(k)=WR(k)+(dWR(k)/L(k))
+		endif
 	    enddo
             Wt=Wt+dWt
+	    !print *, WR(:)
         enddo
         return
     END SUBROUTINE monte
@@ -1537,6 +1566,7 @@
     else
         W0=0;W1=1
     endif
+
     Quan( 1)= potential_energy()       !! Beta*potential energy
     Quan( 2)= kink_number(TotalKinks)  !! Beta*kinetic energy
     Quan( 3)= Quan(1)-Quan(2)          !! Beta*Energy
@@ -1554,7 +1584,7 @@
     Quan(11)= Quan(10)*Vol             !! Spatial Susceptibility 
     Quan(12)= SM()**2                  !! Staggerd Magnetization 
     Quan(13)= Quan(12)**2              !! staggered M^4
-    Quan(14)= Quan(13)*Vol  !Spatial Susceptibility 
+    Quan(14)= Quan(13)*Vol             !! Spatial Susceptibility 
     Quan(15)= Correlator(1,1)
     Quan(16)= Correlator(1,2)
     Quan(17)= Correlator(1,Vol/2)
@@ -1644,12 +1674,14 @@
 		  Site=NextSite(Vertex,1)
 		  do while(Site/=2)
 		      if(dr(NeighVertexNum(Vertex,Site),Sub(Vertex),i)==-1) then
-			  dist(i)=dist(i)-SegmentState(Vertex,Site)
+			  dist(i)=dist(i)-SegmentState(Vertex,Site)/L(j)
 		      endif
 		      Site=NextSite(Vertex,Site)
 		  enddo
 	      enddo
 	  enddo
+	  WindR(:)=dist(:)
+	  WindT=dt/2
       else if(LatticeName=='Pyrochlore') then
 	  do i=1,Dim
 	      do coord = 1, L(i)
@@ -1664,17 +1696,17 @@
 		  do while(Site/=2)
 		      do j=1, Dim
 			  if(dr(NeighVertexNum(Vertex,Site),Sub(Vertex),j)==-1) then
-			      dist(j)=dist(j)-SegmentState(Vertex,Site)
+			      dist(j)=dist(j)-SegmentState(Vertex,Site)/L(j)
 			  endif
 		      enddo
 		      Site=NextSite(Vertex,Site)
 		  enddo
 	      enddo
 	  enddo
+	  WindR(:)=dist(:)/2.0
+	  WindT=dt/2
       endif
 
-      WindR(:)=dist(:)
-      WindT=dt/2
   end SUBROUTINE winding_number
 
   !!!!Staggered magnetization
