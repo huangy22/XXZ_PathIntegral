@@ -52,13 +52,13 @@
 
     do whichone = 1, num
       if(whichone<=10) then
-          write(corrfile(whichone),"(a12,i1,a4)") "static_corr_",whichone-1,".txt"
-          write(freqfile(1, whichone),"(a10,i1,a4)") "corr_k000_",whichone-1,".txt"
-          write(freqfile(2, whichone),"(a12,i1,a4)") "corr_k002PI_",whichone-1,".txt"
+          write(corrfile(whichone),"(a14,i1,a4)") "static_corr_1_",whichone-1,".txt"
+          write(freqfile(1, whichone),"(a10,i1,a4)") "corr_k1_1_",whichone-1,".txt"
+          write(freqfile(2, whichone),"(a10,i1,a4)") "corr_k2_1_",whichone-1,".txt"
       else
-        write(corrfile(whichone),"(a12,i2,a4)")   "static_corr_",whichone-1,".txt"
-        write(freqfile(1, whichone),"(a10,i2,a4)")   "corr_k000_",whichone-1,".txt"
-        write(freqfile(2, whichone),"(a12,i2,a4)")   "corr_k002PI_",whichone-1,".txt"
+        write(corrfile(whichone),"(a12,i2,a4)")   "static_corr_1_",whichone-1,".txt"
+        write(freqfile(1, whichone),"(a10,i2,a4)")   "corr_k1_1_",whichone-1,".txt"
+        write(freqfile(2, whichone),"(a12,i2,a4)")   "corr_k2_1_",whichone-1,".txt"
       endif
     enddo
 
@@ -221,7 +221,7 @@
     write(9, *) "]]} "
     close(9)
 
-    open (10,file="corr_k000.txt") 
+    open (10,file="corr_k1.txt") 
     write(10, *) "##k=", Momentum(1,:)
     do j = 1, MxOmega+1
       write(10,*) 2.d0*Pi*(j-1.d0)/Beta, AveFreqCorr(1, j), DevFreqCorr(1, j)
@@ -229,7 +229,7 @@
     write(10, *) 
     close(10)
 
-    open (11,file="corr_k002PI.txt") 
+    open (11,file="corr_k2.txt") 
     write(11, *) "##k=", Momentum(2, :)
     do j = 1, MxOmega+1
       write(11,*) 2.d0*Pi*(j-1.d0)/Beta, AveFreqCorr(2, j), DevFreqCorr(2, j)

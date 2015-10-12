@@ -200,7 +200,7 @@
     integer              :: dWt, Wt, WindT
     integer    :: Direction
     integer,allocatable    :: dWR(:)
-    integer,allocatable    :: WR(:)
+    double precision,allocatable    :: WR(:)
     integer,allocatable    :: WindR(:)
     integer,allocatable    :: KinkNum(:)
     character(13)       :: RunName(13)
@@ -903,7 +903,6 @@
 		endif
 	    enddo
             Wt=Wt+dWt
-	    !print *, WR(:)
         enddo
         return
     END SUBROUTINE monte

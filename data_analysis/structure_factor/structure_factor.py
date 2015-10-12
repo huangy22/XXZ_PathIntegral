@@ -7,6 +7,7 @@ if "DISPLAY" not in os.environ:
     log.info("no DISPLAY detected, switch to Agg backend!")
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+PI = 3.141592653
 
 def Reform(Data, NSub, L, Vol):
     Chi = np.ndarray((NSub, NSub, Vol))
@@ -17,7 +18,7 @@ def Reform(Data, NSub, L, Vol):
             Chi[i][sub][site] = Data[i][j]
     return Chi
 
-def PlotChi_2D(Chi, lat, DoesSave=True):
+def PlotChi_2D(Chi, lat, Beta, Jx, DoesSave=True):
 
     #####Pyrochlore
     KList_hhl=[]
@@ -55,10 +56,14 @@ def PlotChi_2D(Chi, lat, DoesSave=True):
         x_hl0.append(e[0])
         y_hl0.append(e[1])
 
+    for i in range(len(k_hhl)):
+        if abs(k_hhl[i][2]-2.0*PI)<0.001:
+            print k_hhl[i][0], k_hhl[i][2], ChiK_hhl[i]
+            
+
     plt.figure(1)
     ax1=plt.subplot(121,aspect='equal')
     plt.scatter(x_hhl,y_hhl,c=ChiK_hhl, s=29, edgecolor="black", linewidth=0)
-    print max(ChiK_hhl), min(ChiK_hhl),  max(ChiK_hl0), min(ChiK_hl0)
     plt.xlabel("Direction [hh0]")
     plt.ylabel("Direction [00l]")
     plt.xlim(-15, 15)
@@ -75,7 +80,7 @@ def PlotChi_2D(Chi, lat, DoesSave=True):
     label=np.linspace(min(ChiK_hl0),max(ChiK_hl0), 4)
 
     if DoesSave:
-        plt.savefig("pyrochlore_chiK_{0}.pdf".format(lat.Name))
+        plt.savefig("chiK_{0}_L{1}_{2}_{3}.pdf".format(lat.Name, lat.L[0], Beta, Jx))
     else:
         plt.show()
     plt.close()
@@ -87,16 +92,18 @@ if __name__=="__main__":
     NSub = 4
     L = 4
     Vol = L*L*L
+    Beta = 20.0
+    Jx = 0.05
 
     WeightPara={"NSublat": NSub, "L":[L,L,L],
-            "Beta": 5.0, "MaxTauBin":128}
+            "Beta": Beta, "MaxTauBin":128}
     Map=weight.IndexMap(**WeightPara)
 
     l=lat.Lattice("Pyrochlore", Map)
 
-    Data = IO.LoadDict("../static_corr")["Correlations"]
-    Chi  = Reform(Data, NSub, L, Vol)
-    PlotChi_2D(Chi, l, False)
-    PlotChi_2D(Chi, l)
+    Data = IO.LoadDict("../data/L{0}_{1}_{2}/static_corr".format(L,Beta,Jx))["Correlations"]
+    Chi = Reform(Data, NSub, L, Vol)
+    PlotChi_2D(Chi, l, Beta, Jx, False)
+    PlotChi_2D(Chi, l, Beta, Jx)
 
 
