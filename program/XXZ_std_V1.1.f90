@@ -353,7 +353,7 @@
       do isamp = 1, Nsamp
         call monte
         call measure
-	if(mod(isamp,NmeasCorr)==0)  call measure_Corr
+	!if(mod(isamp,NmeasCorr)==0)  call measure_Corr
         call coll_data(iblck)
       enddo
       print *, "simulation: Block", iblck, " done!"
@@ -361,7 +361,7 @@
       call t_elapse(-1)      ! '-1' just for trace the time
 
       if(mod(iblck, NSave)==0) then
-	  call write2file_corr(iblck)
+		!call write2file_corr(iblck)
           call midwrite2file(iblck)
 	  !call saveconfig
           print*, iblck,"save data and configuration"
@@ -421,8 +421,8 @@
     else
         do k=1,Vol
             SegmentNum(k)=1;
-            SegmentState(k,1)=1
-            SegmentState(k,2)=-1
+            SegmentState(k,1)=int(rn()*2)*2-1
+            SegmentState(k,2)=-SegmentState(k, 1)
             KinkTime(k,1)=0.0
             KinkTime(k,2)=beta
             NeighSite(k,1)=0
@@ -508,7 +508,7 @@
 
     allocate(Momentum(1:Nk, 1:Dim))
     Momentum(1, :) = (/0.d0, 0.d0, 0.d0/)
-    Momentum(2, :) = (/Pi, Pi, Pi/)
+    Momentum(2, :) = (/0.d0, 0.d0, 2.d0*Pi/)
 
     allocate(Quan(1:NObs_b))
     allocate(Obs(1:NObs, 1:NBlck));       Obs = 0.d0
