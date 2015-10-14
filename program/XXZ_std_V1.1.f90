@@ -351,7 +351,7 @@
     print *, "start simulation..."
     do iblck = 1, NBlck
       do isamp = 1, Nsamp
-        call monte
+	call monte
         call measure
 	if(mod(isamp,NmeasCorr)==0)  call measure_Corr
         call coll_data(iblck)
@@ -421,8 +421,8 @@
     else
         do k=1,Vol
             SegmentNum(k)=1;
-            SegmentState(k,1)=1
-            SegmentState(k,2)=-1
+            SegmentState(k,1)=mod(k,2)*2-1
+            SegmentState(k,2)=-SegmentState(k, 1)
             KinkTime(k,1)=0.0
             KinkTime(k,2)=beta
             NeighSite(k,1)=0
@@ -1009,7 +1009,6 @@
             Tmax=KinkTime(IraVertex,EndSite)
             total_E=single_delta_E(MashaVertex,MashaSite,MashaTime,IraTime)
         endif
-        factor2=Factor
         Factor=1/Comp/(SegmentNum(IraVertex)-2)/(Tmax-Tmin)**2
 
         RunNum0(1)=RunNum0(1)+1
@@ -1078,6 +1077,7 @@
             
             OldIraTime=IraTime
             IraTime=tarTime
+	    print *, total_E
             if(indicator==0) then
                 !Ira moves in the same interval ,the simplest case
                 call move_site(IraVertex,IraSite,IraTime,1)
@@ -1128,7 +1128,7 @@
 
         TargetTime=find_nearest_time(IraVertex,num,IraSite,IsPast)
         !TargetTime=compare(KinkTime(IraVertex,Site1),KinkTime(TarVertex,Site2),IsPast)
-        NewKinkTime=rn()*(IraTime-TargetTime)+TargetTime
+	NewKinkTime=rn()*(IraTime-TargetTime)+TargetTime
 
         if(IsPast==1) then
             total_E=double_delta_E(IraVertex,num,Site1,Site0,NewKinkTime,IraTime)
@@ -1460,7 +1460,7 @@
             Energy=Energy+delta_E(NVertex,NSite,BeginTime,EndTime)
         enddo
         single_delta_E=-2.0*SegmentState(CurrentVertex,BeginSite)*Energy
-	single_delta_E=single_delta_E+potential_E(CurrentVertex,BeginSite,BeginTime,EndTime)
+	!single_delta_E=single_delta_E+potential_E(CurrentVertex,BeginSite,BeginTime,EndTime)
     END FUNCTION single_delta_E
 
     double precision FUNCTION double_delta_E(Vertex,NeighNum,Site1,Site2,BeginTime,EndTime)

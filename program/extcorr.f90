@@ -56,9 +56,9 @@
           write(freqfile(1, whichone),"(a10,i1,a4)") "corr_k1_1_",whichone-1,".txt"
           write(freqfile(2, whichone),"(a10,i1,a4)") "corr_k2_1_",whichone-1,".txt"
       else
-        write(corrfile(whichone),"(a12,i2,a4)")   "static_corr_1_",whichone-1,".txt"
+        write(corrfile(whichone),"(a14,i2,a4)")   "static_corr_1_",whichone-1,".txt"
         write(freqfile(1, whichone),"(a10,i2,a4)")   "corr_k1_1_",whichone-1,".txt"
-        write(freqfile(2, whichone),"(a12,i2,a4)")   "corr_k2_1_",whichone-1,".txt"
+        write(freqfile(2, whichone),"(a10,i2,a4)")   "corr_k2_1_",whichone-1,".txt"
       endif
     enddo
 

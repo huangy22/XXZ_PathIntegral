@@ -1,9 +1,11 @@
 #!/usr/bin/python
 import os
 n=4
-Beta = 5.0
+Beta = 1.0
 L = 4
-path = "../../Job6/"
+Jx=0.0
+#path = "../data/L"+str(L)+"_"+str(Beta)+"_"+str(Jx)+"/"
+path = "../../Ising/"
 os.system("rm *s_sqa*.dat")
 os.system("rm corr_*.txt")
 os.system("rm static_cor*.txt")

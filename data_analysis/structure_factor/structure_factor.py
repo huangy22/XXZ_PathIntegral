@@ -92,16 +92,17 @@ if __name__=="__main__":
     NSub = 4
     L = 4
     Vol = L*L*L
-    Beta = 20.0
-    Jx = 0.05
+    Beta = 1.0
+    Jx = 0.0
 
     WeightPara={"NSublat": NSub, "L":[L,L,L],
-            "Beta": Beta, "MaxTauBin":128}
+            "Beta": Beta*1.0, "MaxTauBin":128}
     Map=weight.IndexMap(**WeightPara)
 
     l=lat.Lattice("Pyrochlore", Map)
 
-    Data = IO.LoadDict("../data/L{0}_{1}_{2}/static_corr".format(L,Beta,Jx))["Correlations"]
+    #Data = IO.LoadDict("../data/L{0}_{1}_{2}/static_corr".format(L,Beta,Jx))["Correlations"]
+    Data = IO.LoadDict("../../Ising/static_corr".format(L,Beta,Jx))["Correlations"]
     Chi = Reform(Data, NSub, L, Vol)
     PlotChi_2D(Chi, l, Beta, Jx, False)
     PlotChi_2D(Chi, l, Beta, Jx)
