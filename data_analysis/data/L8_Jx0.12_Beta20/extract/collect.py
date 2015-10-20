@@ -1,9 +1,6 @@
 #!/usr/bin/python
 import os
 n=50
-Beta = 10
-L = 4
-Jx=0.12
 path = "../"
 os.system("rm *s_sqa*.dat")
 
@@ -21,6 +18,6 @@ for i in range(0,n):
 order="./extract"
 os.system(order)
 
-os.system("rm mid_hs_sqa*.dat")
+os.system("rm mid_hs_sqa*.txt")
 os.system("cp hs_sqa0.dat "+path)
 os.system("cp ext_hs_sqa0.dat "+path)
