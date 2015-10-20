@@ -378,7 +378,11 @@
       call t_elapse(-1)      ! '-1' just for trace the time
 
       if(mod(iblck, NSave)==0) then
+<<<<<<< HEAD
 	  !call write2file_corr(iblck)
+=======
+		!call write2file_corr(iblck)
+>>>>>>> 5c77d901a5ecbcadee1d3f0abce3a83eac0cfce0
           call midwrite2file(iblck)
 	  !call saveconfig
           print*, iblck,"save data and configuration"
@@ -438,7 +442,11 @@
     else
         do k=1,Vol
             SegmentNum(k)=1;
+<<<<<<< HEAD
             SegmentState(k,1)=(mod(k, 2)*2)-1
+=======
+            SegmentState(k,1)=int(rn()*2)*2-1
+>>>>>>> 5c77d901a5ecbcadee1d3f0abce3a83eac0cfce0
             SegmentState(k,2)=-SegmentState(k, 1)
             KinkTime(k,1)=0.0
             KinkTime(k,2)=beta
@@ -524,6 +532,7 @@
     Norm = 1.d0/Vol/beta
 
     allocate(Momentum(1:Nk, 1:Dim))
+<<<<<<< HEAD
     if(Dim==3) then
 	Momentum(1, :) = (/0.d0, 0.d0, 0.d0/)
 	Momentum(2, :) = (/Pi, Pi, Pi/)
@@ -543,6 +552,10 @@
 	    enddo
 	enddo
     endif
+=======
+    Momentum(1, :) = (/0.d0, 0.d0, 0.d0/)
+    Momentum(2, :) = (/0.d0, 0.d0, 2.d0*Pi/)
+>>>>>>> 5c77d901a5ecbcadee1d3f0abce3a83eac0cfce0
 
     allocate(Quan(1:NObs_b))
     allocate(Obs(1:NObs, 1:NBlck));       Obs = 0.d0
