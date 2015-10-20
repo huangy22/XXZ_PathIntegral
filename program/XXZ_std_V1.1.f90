@@ -105,6 +105,7 @@
     character(100),allocatable  :: komegafiles(:), ktaufiles(:)    ! frequency correlator 1
     character(100) :: file_config
     character(100) :: file_config2
+    character(100) :: file_status
     !-----------------------------------------------------------------
 
     !-- Lattice and state --------------------------------------------
@@ -199,9 +200,9 @@
     double precision     :: EnergyCheck
     integer              :: dWt, Wt, WindT
     integer    :: Direction
-    integer,allocatable    :: dWR(:)
-    integer,allocatable    :: WR(:)
-    integer,allocatable    :: WindR(:)
+    double precision,allocatable    :: dWR(:)
+    double precision,allocatable    :: WR(:)
+    double precision,allocatable    :: WindR(:)
     integer,allocatable    :: KinkNum(:)
     character(13)       :: RunName(13)
     double precision    :: RunNum(10)
@@ -236,8 +237,6 @@
     allocate(WindR(1:Dim))
     allocate(komegafiles(1:Nk))
     allocate(ktaufiles(1:Nk))
-    NSub = 1
-    nnb = 2*Dim
 
     print *, 'Lattice, L, beta, J,Q,Hz,Ntoss, Nsamp, Nswee, NSave, Seed, NBlck, IsLoad, Outputfile, files:'
     read  *,  LatticeName,L(:),beta,JJ,Q,ExternalField,Ntoss,Nsamp,Nswee,NSave,Seed,NBlck, &
@@ -254,9 +253,24 @@
     !!!!!!Treatments for lattices with multiple sublattices!!!!!!!!!!
     if(LatticeName=='Pyrochlore') then
 	NSub = 4
+	nnb = 2*Dim
+    elseif(LatticeName=='Cubic') then
+	NSub = 1
+	nnb = 2*Dim
+    elseif(LatticeName=='Triangular') then
+	NSub = 1
+	nnb = 6
     endif
     if(LatticeName=='Pyrochlore' .and. Dim/=3) then
 	print *,"Pyrochlore on ", Dim, "dimension does not exist!"
+	stop
+    endif
+    if(LatticeName=='Cubic' .and. Dim/=3 .and. Dim/=2) then
+	print *,"Cubic on ", Dim, "dimension does not exist!"
+	stop
+    endif
+    if(LatticeName=='Triangular' .and. Dim/=2) then
+	print *,"Triangular on ", Dim, "dimension does not exist!"
 	stop
     endif
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -274,7 +288,7 @@
     enddo
     Vol = Vol*NSub
 
-    NmeasCorr = 50
+    NmeasCorr = 10
 
     allocate(dr(nnb, 1:NSub, 1:Dim))
     allocate(back(nnb, 1:NSub))
@@ -286,6 +300,7 @@
 
     write(file_config,"(a1,a99)") "c",filename
     write(file_config2,"(a1,a99)") "w",filename
+    write(file_status,"(a1,a99)") "s",filename
 
     !!!!!Jzz
     JJ=JJ/4.0
@@ -334,6 +349,7 @@
         do iblck = 1, NBlck
 	    do itoss = 1, Ntoss
 	      call monte
+              !call check_config
 	    enddo
         enddo
     endif
@@ -351,9 +367,10 @@
     print *, "start simulation..."
     do iblck = 1, NBlck
       do isamp = 1, Nsamp
-        call monte
+	call monte
+	!call check_config
         call measure
-	!if(mod(isamp,NmeasCorr)==0)  call measure_Corr
+  if(mod(isamp,NmeasCorr)==0)  call measure_Corr
         call coll_data(iblck)
       enddo
       print *, "simulation: Block", iblck, " done!"
@@ -361,9 +378,9 @@
       call t_elapse(-1)      ! '-1' just for trace the time
 
       if(mod(iblck, NSave)==0) then
-		!call write2file_corr(iblck)
+    call write2file_corr(iblck)
           call midwrite2file(iblck)
-	  !call saveconfig
+    call saveconfig
           print*, iblck,"save data and configuration"
       endif
     enddo
@@ -447,13 +464,13 @@
     endif
     
     do i = 1, Dim
-        if(L(i)<=2) then
-            write(6,*) 'L must bigger than 2'
-        endif
+        !if(L(i)<=2) then
+            !write(6,*) 'L must bigger than 2'
+        !endif
 
-        if(L(i)-L(i)/2*2==1) then
-            write(6,*) 'Give me even L,please!'
-        endif
+        !if(L(i)-L(i)/2*2==1) then
+            !write(6,*) 'Give me even L,please!'
+        !endif
 
         if(L(i)>MxL) then
           write(6,*) 'L < MxL?';                              stop
@@ -507,8 +524,25 @@
     Norm = 1.d0/Vol/beta
 
     allocate(Momentum(1:Nk, 1:Dim))
-    Momentum(1, :) = (/0.d0, 0.d0, 0.d0/)
-    Momentum(2, :) = (/0.d0, 0.d0, 2.d0*Pi/)
+    if(Dim==3) then
+	Momentum(1, :) = (/0.d0, 0.d0, 0.d0/)
+	Momentum(2, :) = (/0.d0, 0.d0, 2.d0*Pi/)
+
+	allocate(ReKPhase(1:Nk, 1:Vol))
+	allocate(ImKPhase(1:Nk, 1:Vol))
+
+
+	do k = 1, Nk
+	    do i = 1, Vol
+		phase = 0.d0
+		do j = 1, Dim
+		    phase = phase + Momentum(k, j)*RealVector(i, j)
+		enddo
+		ReKPhase(k, i) = dcos(phase)
+		ImKPhase(k, i) = dsin(phase)
+	    enddo
+	enddo
+    endif
 
     allocate(Quan(1:NObs_b))
     allocate(Obs(1:NObs, 1:NBlck));       Obs = 0.d0
@@ -520,19 +554,7 @@
     DynamicalCorr = 0.d0
     CorrKTau = 0.d0
 
-    allocate(ReKPhase(1:Nk, 1:Vol))
-    allocate(ImKPhase(1:Nk, 1:Vol))
-
-    do k = 1, Nk
-	do i = 1, Vol
-	    phase = 0.d0
-	    do j = 1, Dim
-		phase = phase + Momentum(k, j)*RealVector(i, j)
-	    enddo
-	    ReKPhase(k, i) = dcos(phase)
-	    ImKPhase(k, i) = dsin(phase)
-	enddo
-    enddo
+    EnergyCheck = potential_energy()
     return
   END SUBROUTINE carlo
   !===================================================================
@@ -781,7 +803,50 @@
       dr(6,4, 1) = 0;   dr(6,4, 2) =  1;   dr(6,4, 3) = -1 
 
       call PrintLattice
-    endif
+    else if(LatticeName=='Triangular') then
+	Sub(:) = 1
+        !RealVectors
+        LatticeVector(1,:) = (/1.0, 0.0/)
+        LatticeVector(2,:) = (/0.5, sqrt(3.0)/2.0/)
+        SubVector(1,:) = (/0.0, 0.0/)
+
+        sit=0
+        do iy=1,L(2)
+	    do ix=1,L(1)
+	      RealVector(sit,:)=(ix-1)*LatticeVector(1,:)+(iy-1)*LatticeVector(2,:)
+	      sit = sit+1
+	    enddo
+	enddo
+
+        k = 0
+        do y = 1,L(2)
+	    do x = 1,L(1)
+	      k = k + 1
+
+	      xm =  -1 ;        if(x== 1) xm = L(1)-1
+	      xp =  +1 ;        if(x==L(1)) xp = 1-L(1)
+
+	      ym =  -L(1);      if(y== 1) ym = Vol-L(1)
+	      yp =  +L(1);      if(y==L(2)) yp = L(1)-Vol
+
+	      Ngs(1,k) = k+xp;       Ngs(6,k) = k+xm
+	      Ngs(2,k) = k+yp;       Ngs(5,k) = k+ym
+	      Ngs(3,k) = k+yp+xm;    Ngs(4,k) = k+ym+xp
+
+	enddo
+      enddo 
+
+      Back(1, 1) = 6;   Back(6, 1) = 1 
+      Back(2, 1) = 5;   Back(5, 1) = 2
+      Back(3, 1) = 4;   Back(4, 1) = 3
+
+      !-- auxillary variables to measure wrapping probability-----------
+      dr(:,:,:)=0
+      dr(1,1, 1) = 1;  dr(6, 1, 1) = -1
+      dr(2,1, 2) = 1;  dr(5, 1, 2) = -1
+      dr(3,1, 1) =-1;  dr(4, 1, 1) =  1
+      dr(3,1, 2) = 1;  dr(4, 1, 2) = -1
+      endif
   END SUBROUTINE def_lattice
 
   SUBROUTINE GetVector(Site, Vector, Sub)
@@ -807,6 +872,10 @@
 	Vector(3) = tmp/L(1)/L(2)+1
 	Vector(2) = (tmp-(Vector(3)-1)*L(1)*L(2))/L(1)+1
 	Vector(1) = tmp-(Vector(3)-1)*L(1)*L(2)-(Vector(2)-1)*L(1)+1
+    else if(LatticeName=='Triangular') then
+	Vector(2) = (Site-1)/L(1)+1
+	Vector(1) = Site-(Vector(2)-1)*L(1)
+	Sub = 1
     endif
   END SUBROUTINE
 
@@ -822,6 +891,8 @@
 	endif
     else if(LatticeName=='Pyrochlore') then
 	Site = ((Vector(3)-1)*L(1)*L(2)+(Vector(2)-1)*L(1)+Vector(1)-1)*NSub+Sub
+    else if(LatticeName=='Triangular') then
+	Site = Vector(1)+(Vector(2)-1)*L(1)
     endif
   END SUBROUTINE
 
@@ -834,6 +905,36 @@
 	write(18,*) "{'Points': ["
 	DO j=1, Vol 
 	    write(18,*) "[(", RealVector(j,1), ",", RealVector(j,2), ",", RealVector(j,3), "), ", Sub(j), "],"
+	END DO 
+	write(18,*) "], "
+	write(18, *) "'Interactions': ["
+	DO j=1, Vol 
+	    DO nb = 1,nnb
+		write(18,*) "[", j, ", ",  Ngs(nb, j), "],"
+		deltar(:) = RealVector(Ngs(nb, j),:)-RealVector(j, :)
+		do i = 1, Dim
+		    if(deltar(i)>=L(i)-0.5) then
+			deltar(i) = deltar(i) -L(i)
+		    endif
+		    if(deltar(i)<=-(L(i)-0.5)) then
+			deltar(i) = deltar(i) +L(i)
+		    endif
+		    deltar(i) = deltar(i)-sum(dr(nb, Sub(j), :)*LatticeVector(:, i)/2.0)
+		    if(deltar(i)/=0) then
+			print *, j, nb, i, deltar(i)
+		    endif
+		enddo
+	    ENDDO
+	END DO 
+	write(18,*) "], "
+	write(18,*) "}"
+	close(18)
+
+    else if(LatticeName=="Triangular") then
+	open(18,file='coord.txt');  
+	write(18,*) "{'Points': ["
+	DO j=1, Vol 
+	    write(18,*) "[(", RealVector(j,1), ",", RealVector(j,2), "), ", Sub(j), "],"
 	END DO 
 	write(18,*) "], "
 	write(18, *) "'Interactions': ["
@@ -969,6 +1070,7 @@
         total_E=single_delta_E(vertex,Site1,itime,mtime)
         Factor=Comp*SegmentNum(vertex)*(Tmax-Tmin)**2
         if(rn()<Factor*exp(-total_E)) then
+            EnergyCheck=EnergyCheck+total_E
 
             if(SegmentState(Vertex,Site1)==-1) then
                 direction=-1
@@ -1009,11 +1111,11 @@
             Tmax=KinkTime(IraVertex,EndSite)
             total_E=single_delta_E(MashaVertex,MashaSite,MashaTime,IraTime)
         endif
-        factor2=Factor
         Factor=1/Comp/(SegmentNum(IraVertex)-2)/(Tmax-Tmin)**2
 
         RunNum0(1)=RunNum0(1)+1
         if(rn()<Factor*exp(-total_E)) then
+            EnergyCheck=EnergyCheck+total_E
 
             RunNum(1)=RunNum(1)+1
 
@@ -1073,6 +1175,7 @@
         endif
         RunNum0(2)=RunNum0(2)+1
         if(rn()<exp(-total_E)) then
+            EnergyCheck=EnergyCheck+total_E
 
             RunNum(2)=RunNum(2)+1
             
@@ -1128,7 +1231,7 @@
 
         TargetTime=find_nearest_time(IraVertex,num,IraSite,IsPast)
         !TargetTime=compare(KinkTime(IraVertex,Site1),KinkTime(TarVertex,Site2),IsPast)
-        NewKinkTime=rn()*(IraTime-TargetTime)+TargetTime
+	NewKinkTime=rn()*(IraTime-TargetTime)+TargetTime
 
         if(IsPast==1) then
             total_E=double_delta_E(IraVertex,num,Site1,Site0,NewKinkTime,IraTime)
@@ -1141,6 +1244,7 @@
 
         RunNum0(3)=RunNum0(3)+1
         if(rn()<Factor*exp(-total_E)) then
+            EnergyCheck=EnergyCheck+total_E
 
             RunNum(3)=RunNum(3)+1
             dWR(:)=dWR(:)+direction*dr(num,Sub(IraVertex),:)
@@ -1214,6 +1318,7 @@
 
         RunNum0(4)=RunNum0(4)+1
         if(rn()<Factor*exp(-total_E)) then              
+            EnergyCheck=EnergyCheck+total_E
 
             RunNum(4)=RunNum(4)+1
             dWR(:)=dWR(:)+direction*dr(num,Sub(IraVertex),:)
@@ -1460,7 +1565,7 @@
             Energy=Energy+delta_E(NVertex,NSite,BeginTime,EndTime)
         enddo
         single_delta_E=-2.0*SegmentState(CurrentVertex,BeginSite)*Energy
-	single_delta_E=single_delta_E+potential_E(CurrentVertex,BeginSite,BeginTime,EndTime)
+	!single_delta_E=single_delta_E+potential_E(CurrentVertex,BeginSite,BeginTime,EndTime)
     END FUNCTION single_delta_E
 
     double precision FUNCTION double_delta_E(Vertex,NeighNum,Site1,Site2,BeginTime,EndTime)
@@ -1590,10 +1695,10 @@
     Quan(17)= Correlator(1,Vol/2)
     Quan(18)= W0
     Quan(19)= W1
-    Quan(20)= GetKTauCorr(2, 0.1d0)
-    Quan(21)= GetKTauCorr(2, Beta/2.d0)
-    Quan(22)= GetKOmegaCorr(2, 0)
-    Quan(23)= GetKOmegaCorr(2, MXOmega/2)
+    !Quan(20)= GetKTauCorr(2, 0.1d0)
+    !Quan(21)= GetKTauCorr(2, Beta/2.d0)
+    !Quan(22)= GetKOmegaCorr(2, 0)
+    !Quan(23)= GetKOmegaCorr(2, MXOmega/2)
   END SUBROUTINE measure
 
   SUBROUTINE measure_Corr
@@ -1658,55 +1763,29 @@
       integer Site
       dist(:)=0
       dt=0
-      do Vertex=1,Vol
+      do Vertex = 1,Vol
           dt=dt+SegmentState(Vertex,1)
       enddo
-      if(LatticeName=='Cubic') then
-	  do i=1,Dim
-	      do coord = 1, L(i)
-		  if(i==1) then
-		      Vertex = coord
-		  else if(i==2) then
-		      Vertex = (coord-1)*L(1)+1
-		  else if(i==3) then
-		      Vertex = (coord-1)*L(1)*L(2)+1
-		  endif
-		  Site=NextSite(Vertex,1)
-		  do while(Site/=2)
-		      if(dr(NeighVertexNum(Vertex,Site),Sub(Vertex),i)==-1) then
-			  dist(i)=dist(i)-SegmentState(Vertex,Site)/L(j)
-		      endif
-		      Site=NextSite(Vertex,Site)
-		  enddo
-	      enddo
-	  enddo
-	  WindR(:)=dist(:)
-	  WindT=dt/2
-      else if(LatticeName=='Pyrochlore') then
-	  do i=1,Dim
-	      do coord = 1, L(i)
-		  if(i==1) then
-		      call GetSite(Vertex, (/coord, 1, 1/), 1)
-		  else if(i==2) then
-		      call GetSite(Vertex, (/1, coord, 1/), 1)
-		  else if(i==3) then
-		      call GetSite(Vertex, (/1, 1, coord/), 1)
-		  endif
-		  Site=NextSite(Vertex,1)
-		  do while(Site/=2)
-		      do j=1, Dim
-			  if(dr(NeighVertexNum(Vertex,Site),Sub(Vertex),j)==-1) then
-			      dist(j)=dist(j)-SegmentState(Vertex,Site)/L(j)
-			  endif
-		      enddo
-		      Site=NextSite(Vertex,Site)
-		  enddo
-	      enddo
-	  enddo
-	  WindR(:)=dist(:)/2.0
-	  WindT=dt/2
-      endif
+      WindT=dt/2
 
+      do Vertex = 1, Vol
+	  Site=NextSite(Vertex,1)
+	  do while(Site/=2)
+	      do i = 1, Dim
+		  if(dr(NeighVertexNum(Vertex,Site),Sub(Vertex),i)==1) then
+		      dist(i)=dist(i)-SegmentState(Vertex,Site)
+		  endif
+	      enddo
+	      Site=NextSite(Vertex,Site)
+	  enddo
+      enddo
+      if(LatticeName=="Pyrochlore") then
+	  WindR(:)=dist(:)/L(:)/2.0
+      else if(LatticeName=="Cubic") then
+	  WindR(:)=dist(:)/L(:)
+      else if(LatticeName=='Triangular') then
+	  WindR(:)=dist(:)/L(:)
+      endif
   end SUBROUTINE winding_number
 
   !!!!Staggered magnetization
@@ -2194,6 +2273,106 @@
   END SUBROUTINE stat_alan
   !===================================================================
 
+  !===================================================================
+  !==============check configurations ================================
+  SUBROUTINE check_config()
+    implicit none
+    integer :: i,Site,Vertex,num,pnum,NVertex,KNum,PKNum, state
+    double precision :: Energy
+    open(18,file=file_status,access="append")
+    write(18,*) "checking..."
+    state=0
+    do Vertex=1,Vol
+        KNum=1
+        Site=NextSite(Vertex,1)
+        do while(Site/=2)
+            KNum=KNum+1
+            if(KinkTime(Vertex,Site)>=Beta)then
+                write(18,*) Number, Vertex,Site
+                state=error_print("Kink Time is Beta!")
+            endif
+            if(KinkTime(Vertex,Site)<=KinkTime(Vertex,PrevSite(Vertex,Site)))then
+                write(18,*) Number, Vertex,Site
+                write(18,*) KinkTime(Vertex,Site),KinkTime(Vertex,PrevSite(Vertex,Site))
+                state=error_print("Kink Time order is wrong!")
+            endif
+            if(Vertex/=MashaVertex .or. Site/=MashaSite) then
+                if(Vertex/=IraVertex .or. Site/=IraSite) then
+                   num=NeighVertexNum(Vertex,Site)
+                   call check_kink_order(Vertex,Site,num, state)
+                endif
+            endif
+            Site=NextSite(Vertex,Site)
+            if(SegmentState(Vertex,Site)==0) then
+                write(18,*) Number,Vertex,Site
+                state=error_print("State=0!")
+            endif
+            if(SegmentState(Vertex,Site)/=-SegmentState(Vertex,PrevSite(Vertex,Site))) then
+                write(18,*) Number,Vertex,Site,PrevSite(Vertex,Site)
+                write(18,*) SegmentState(Vertex,Site),SegmentState(Vertex,PrevSite(Vertex,Site))
+                state=error_print("State dismatch!")
+            endif
+        enddo
+        if(KNum/=SegmentNum(Vertex))then
+            write(*,*) "Segment Number wrong!",KNum,SegmentNum(Vertex),Vertex
+        endif
+    enddo
+
+    Energy=potential_energy()
+    if(abs(EnergyCheck-Energy)/Energy>1e-10) then
+        write(18,*) number,EnergyCheck,Energy
+        state=error_print("Error! Energy is wrong!")
+    endif
+    EnergyCheck=Energy
+
+    call winding_number()
+    do i = 1, Dim
+	if(abs(WindR(i)-WR(i))>0.01) then
+	    write(18,*) number,WindR(i),WR(i)
+	    state=error_print("Error! winding number is wrong!")
+	endif
+    enddo
+
+    write(18,*) "check done"
+    close(18)
+    if(state/=0) then
+        call saveconfig()
+        STOP
+    endif
+  end SUBROUTINE
+
+  SUBROUTINE check_kink_order(Vertex,Site,num,state)
+    implicit none
+    integer :: Site,Vertex,num,i,NVertex, state
+    double precision  :: Time
+    do i=1,nnb
+        NVertex=Ngs(i,Vertex)
+        if(KinkTime(NVertex,NearestSite(Vertex,Site,i))>KinkTime(Vertex,Site))then
+            write(18,*) number,Vertex,Site
+            write(18,*) NearestSite(Vertex,Site,i)
+            write(18,*) KinkTime(NVertex,NearestSite(Vertex,Site,i)),KinkTime(Vertex,Site)
+            state=error_print("NearestSite is wrong!")
+        endif
+        if(i==num .and. NearestSite(Vertex,Site,num)/=NeighSite(Vertex,Site)) then
+            write(18,*) number,Vertex,Site
+            write(18,*) NeighSite(Vertex,Site),NearestSite(Vertex,Site,num)
+            write(18,*) KinkTime(Vertex,Site),KinkTime(NVertex,NeighSite(Vertex,Site)),  &
+                &  KinkTime(NVertex,NearestSite(Vertex,Site,num))
+            state=error_print("Neigh Sites are not at the same time!")
+        endif
+    enddo
+    return
+  end SUBROUTINE
+
+  integer FUNCTION error_print(str)
+      implicit none
+      character(*)  :: str
+      write(18,*) "ERROR!"
+      write(18,*) str
+      error_print=1
+  end FUNCTION
+
+  !===================================================================
   !===============Shift register random number generator =============
   !  very long period sequential version
   !! THIS IS PROJECT-INDEPENDENT 
