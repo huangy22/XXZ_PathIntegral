@@ -225,7 +225,7 @@
     integer :: itoss,isamp,iblck,i,k,Site,Low
     character(99) :: filename
 
-    Nk = 2
+    Nk = 6
 
     print *, 'Dim'
     read *, Dim
@@ -404,7 +404,7 @@
   SUBROUTINE carlo
     implicit none
     integer  :: i,j, k, x, y, xp, xm, ym, yp
-    integer  :: kb,temp
+    integer  :: kb,temp, stat
     double precision :: vec(1:Dim)
     double precision :: phase
     
@@ -415,8 +415,8 @@
     !<n> is the average kink number per site
     ! <n>=beta*2Vol*<SxSx+SySy>/Vol~beta
     !-- define time-line list ----------------------------------------
-    if(IsLoad==1) then
-        open(9,file=file_config)
+    open(9,file=file_config, iostat=stat)
+    if(IsLoad==1 .and. stat==0) then
         60 format(i6)
         61 format(f25.17)
         do i=1,Vol
@@ -436,6 +436,8 @@
         enddo
         close(9)
     else
+        IsLoad = 0
+        print *, "No load file, isload=0!!"
         do k=1,Vol
             SegmentNum(k)=1;
             SegmentState(k,1)=int(rn()*2)*2-1
@@ -527,6 +529,10 @@
     if(Dim==3) then
 	Momentum(1, :) = (/0.d0, 0.d0, 0.d0/)
 	Momentum(2, :) = (/0.d0, 0.d0, 2.d0*Pi/)
+  Momentum(3, :) = (/0.d0, 0.d0, 2.d0*Pi*(L(3)-1)/L(3)/)
+  Momentum(4, :) = (/0.d0, 0.d0, 2.d0*Pi*(L(3)-2)/L(3)/)
+	Momentum(5, :) = (/2.d0*Pi/L(1), 2.d0*Pi/L(2), 2.d0*Pi/)
+	Momentum(6, :) = (/Pi, Pi, Pi/)
 
 	allocate(ReKPhase(1:Nk, 1:Vol))
 	allocate(ImKPhase(1:Nk, 1:Vol))
@@ -1697,8 +1703,8 @@
     Quan(19)= W1
     !Quan(20)= GetKTauCorr(2, 0.1d0)
     !Quan(21)= GetKTauCorr(2, Beta/2.d0)
-    !Quan(22)= GetKOmegaCorr(2, 0)
-    !Quan(23)= GetKOmegaCorr(2, MXOmega/2)
+    Quan(22)= GetKOmegaCorr(2, 1024)
+    Quan(23)= GetKOmegaCorr(2, 2048)
   END SUBROUTINE measure
 
   SUBROUTINE measure_Corr
@@ -1710,11 +1716,11 @@
 	enddo
     enddo
     call KOmegaCorrelator()
-    do j = 1, Nk
-	do i = 0, MxOmega
-	    CorrKTau(j, i) = CorrKTau(j, i) + GetKTauCorr(j, (i*Beta)/(MxOmega*1.0))
-	enddo
-    enddo
+    !do j = 1, Nk
+	!do i = 0, MxOmega
+			!CorrKTau(j, i) = CorrKTau(j, i) + GetKTauCorr(j, (i*Beta)/(MxOmega*1.0))
+	!enddo
+    !enddo
   END SUBROUTINE measure_Corr
 
   double precision FUNCTION potential_energy()
@@ -2138,16 +2144,16 @@
 	close(10)
     enddo
 
-    do k = 1, Nk
-	open(12, file=ktaufiles(k))
-	write(12, *) "##Num=", iblck
-	write(12, *) "##k=", Momentum(k, :)
-	do j = 0, MxOmega
-	    write(12,*) (j*Beta)/(MxOmega*1.0), nor*CorrKTau(k, j), 0.d0
-	enddo
-	write(12, *) 
-	close(12)
-    enddo
+    !do k = 1, Nk
+	!open(12, file=ktaufiles(k))
+	!write(12, *) "##Num=", iblck
+	!write(12, *) "##k=", Momentum(k, :)
+	!do j = 0, MxOmega
+			!write(12,*) (j*Beta)/(MxOmega*1.0), nor*CorrKTau(k, j), 0.d0
+	!enddo
+	!write(12, *) 
+	!close(12)
+    !enddo
 
     return
   END SUBROUTINE write2file_corr
