@@ -370,7 +370,7 @@
 	call monte
 	!call check_config
         call measure
-  if(mod(isamp,NmeasCorr)==0)  call measure_Corr
+	if(mod(isamp,NmeasCorr)==0)  call measure_Corr
         call coll_data(iblck)
       enddo
       print *, "simulation: Block", iblck, " done!"
@@ -378,9 +378,9 @@
       call t_elapse(-1)      ! '-1' just for trace the time
 
       if(mod(iblck, NSave)==0) then
-    call write2file_corr(iblck)
+	  call write2file_corr(iblck)
           call midwrite2file(iblck)
-    call saveconfig
+	  !call saveconfig
           print*, iblck,"save data and configuration"
       endif
     enddo
@@ -1657,7 +1657,7 @@
   SUBROUTINE measure
     implicit none
     integer :: i, j 
-    double precision :: TotalKinks, tmp
+    double precision :: TotalKinks, tmp, tot
     logical :: flag
 
     !--Observables definition ----------------------------------------
@@ -1690,15 +1690,15 @@
     Quan(12)= SM()**2                  !! Staggerd Magnetization 
     Quan(13)= Quan(12)**2              !! staggered M^4
     Quan(14)= Quan(13)*Vol             !! Spatial Susceptibility 
-    Quan(15)= Correlator(1,1)
-    Quan(16)= Correlator(1,2)
-    Quan(17)= Correlator(1,Vol/2)
+    !Quan(15)= Correlator(1,1)
+    !Quan(16)= Correlator(1,2)
+    !Quan(17)= Correlator(1,Vol/2)
     Quan(18)= W0
     Quan(19)= W1
-    !Quan(20)= GetKTauCorr(2, 0.1d0)
-    !Quan(21)= GetKTauCorr(2, Beta/2.d0)
-    !Quan(22)= GetKOmegaCorr(2, 0)
-    !Quan(23)= GetKOmegaCorr(2, MXOmega/2)
+    Quan(20)= GetKTauCorr1(1, 0.d0)
+    Quan(21)= GetKTauCorr(1, 0.d0)
+    Quan(22)= GetKTauCorr1(2, 0.d0)
+    Quan(23)= GetKTauCorr(2, 0.d0)
   END SUBROUTINE measure
 
   SUBROUTINE measure_Corr
@@ -1710,11 +1710,11 @@
 	enddo
     enddo
     call KOmegaCorrelator()
-    do j = 1, Nk
-	do i = 0, MxOmega
-	    CorrKTau(j, i) = CorrKTau(j, i) + GetKTauCorr(j, (i*Beta)/(MxOmega*1.0))
-	enddo
-    enddo
+    !do j = 1, Nk
+	!do i = 0, MxOmega
+	    !CorrKTau(j, i) = CorrKTau(j, i) + GetKTauCorr(j, (i*Beta)/(MxOmega*1.0))
+	!enddo
+    !enddo
   END SUBROUTINE measure_Corr
 
   double precision FUNCTION potential_energy()
@@ -1956,7 +1956,32 @@
 	endif
     enddo
     GetKTauCorr = ReKCorr
+
   end function GetKTauCorr
+
+  double precision function GetKTauCorr1(k, tau)
+    !SzSz non-zero frequency correlator in momentum space
+    implicit none
+    double precision :: tau
+    integer :: i, j, l, k
+    double precision :: phase, ReCorr, ImCorr
+    integer :: iphase
+    double precision :: ReKCorr, ImKCorr
+    ReKCorr = 0.d0
+    ImKCorr = 0.d0
+
+    do j = 1, Vol
+	call ImagTimeCorrelator(j, tau, ReCorr, ImCorr)
+	if(k==1) then
+	    ReKCorr = ReKCorr + ReCorr
+	    ImKCorr = ImKCorr + ImCorr
+	else
+	    ReKCorr = ReKCorr + ReCorr*ReKPhase(k, j) + ImCorr*ImKPhase(k, j)
+	    ImKCorr = ImKCorr + ImCorr*ReKPhase(k, j) - ReCorr*ImKPhase(k, j)
+	endif
+    enddo
+    GetKTauCorr1 = (ReKCorr**2.d0+ImKCorr**2.d0)/(Vol)
+  end function GetKTauCorr1
 
 
   double precision FUNCTION Susceptibility_total()
@@ -2138,16 +2163,16 @@
 	close(10)
     enddo
 
-    do k = 1, Nk
-	open(12, file=ktaufiles(k))
-	write(12, *) "##Num=", iblck
-	write(12, *) "##k=", Momentum(k, :)
-	do j = 0, MxOmega
-	    write(12,*) (j*Beta)/(MxOmega*1.0), nor*CorrKTau(k, j), 0.d0
-	enddo
-	write(12, *) 
-	close(12)
-    enddo
+    !do k = 1, Nk
+	!open(12, file=ktaufiles(k))
+	!write(12, *) "##Num=", iblck
+	!write(12, *) "##k=", Momentum(k, :)
+	!do j = 0, MxOmega
+	    !write(12,*) (j*Beta)/(MxOmega*1.0), nor*CorrKTau(k, j), 0.d0
+	!enddo
+	!write(12, *) 
+	!close(12)
+    !enddo
 
     return
   END SUBROUTINE write2file_corr

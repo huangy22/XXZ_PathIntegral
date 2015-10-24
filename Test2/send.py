@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import random
 import os, sys
-IsCluster=True
+IsCluster=False
 sourcedir="../program/"
 execute="XXZ"
 Dim = 3
@@ -64,8 +64,8 @@ for eachline in inlist:
             f.close()
 
             if IsCluster==False:
-                os.system("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile+" &")
-                #os.system("./"+execute+" < "+infilepath+"/"+infile)
+                #os.system("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile+" &")
+                os.system("./"+execute+" < "+infilepath+"/"+infile)
             else:
                 with open(jobfilepath+"/"+jobfile, "w") as fjob:
                     fjob.write("#!/bin/sh\n"+"#PBS -N "+jobfile+"\n")

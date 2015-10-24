@@ -1,9 +1,9 @@
 #!/usr/bin/python
 import os
-n=50
-Beta = 10
+n=200
+Beta = 500
 L = 4
-Jx=0.12
+Jx=0.09
 path = "../"
 os.system("rm *s_sqa*.dat")
 

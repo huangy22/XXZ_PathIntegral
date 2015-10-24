@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import random
 import os, sys
-IsCluster=True
+IsCluster=False
 sourcedir="../program/"
 execute="XXZ"
 Dim = 3
@@ -13,7 +13,7 @@ filelist=os.listdir(sourcedir)
 sourcename=[elem for elem in filelist if elem[0:3]=="XXZ" and elem[-3:]=="f90"]
 sourcename.sort()
 sourcename=sourcename[-1]
-os.system("gfortran "+sourcedir+"/"+sourcename+" -O3 -o "+homedir+"/"+execute)
+os.system("gfortran "+sourcedir+"/"+sourcename+" -pg -o "+homedir+"/"+execute)
 infilepath=homedir+"/infile"
 outfilepath=homedir+"/outfile"
 jobfilepath=homedir+"/jobfile"
@@ -64,8 +64,8 @@ for eachline in inlist:
             f.close()
 
             if IsCluster==False:
-                os.system("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile+" &")
-                #os.system("./"+execute+" < "+infilepath+"/"+infile)
+                #os.system("./"+execute+" < "+infilepath+"/"+infile+" > "+outfilepath+"/"+outfile+" &")
+                os.system("./"+execute+" < "+infilepath+"/"+infile)
             else:
                 with open(jobfilepath+"/"+jobfile, "w") as fjob:
                     fjob.write("#!/bin/sh\n"+"#PBS -N "+jobfile+"\n")
