@@ -1,0 +1,41 @@
+#cp ../L4_Jx0.12_Beta10/corr*.txt        L4_Jx0.12_Beta10/
+#cp ../L4_Jx0.12_Beta10/static_corr*.txt L4_Jx0.12_Beta10/
+#cp ../L4_Jx0.12_Beta10/mid*.txt         L4_Jx0.12_Beta10/
+
+#cp ../L6_Jx0.12_Beta15/corr*.txt        L6_Jx0.12_Beta15/
+#cp ../L6_Jx0.12_Beta15/static_corr*.txt L6_Jx0.12_Beta15/
+#cp ../L6_Jx0.12_Beta15/mid*.txt         L6_Jx0.12_Beta15/
+
+#cp ../L8_Jx0.12_Beta20/corr*.txt        L8_Jx0.12_Beta20/
+#cp ../L8_Jx0.12_Beta20/static_corr*.txt L8_Jx0.12_Beta20/
+#cp ../L8_Jx0.12_Beta20/mid*.txt         L8_Jx0.12_Beta20/
+
+#cp ../L4_Jx0.14_Beta10/corr*.txt        L4_Jx0.14_Beta10/
+#cp ../L4_Jx0.14_Beta10/static_corr*.txt L4_Jx0.14_Beta10/
+#cp ../L4_Jx0.14_Beta10/mid*.txt         L4_Jx0.14_Beta10/
+
+#cp ../L6_Jx0.14_Beta15/corr*.txt        L6_Jx0.14_Beta15/
+#cp ../L6_Jx0.14_Beta15/static_corr*.txt L6_Jx0.14_Beta15/
+#cp ../L6_Jx0.14_Beta15/mid*.txt         L6_Jx0.14_Beta15/
+
+#cp ../L8_Jx0.14_Beta20/corr*.txt        L8_Jx0.14_Beta20/
+#cp ../L8_Jx0.14_Beta20/static_corr*.txt L8_Jx0.14_Beta20/
+#cp ../L8_Jx0.14_Beta20/mid*.txt         L8_Jx0.14_Beta20/
+
+#cp ../L4_Jx0.15_Beta10/corr*.txt        L4_Jx0.15_Beta10/
+#cp ../L4_Jx0.15_Beta10/static_corr*.txt L4_Jx0.15_Beta10/
+#cp ../L4_Jx0.15_Beta10/mid*.txt         L4_Jx0.15_Beta10/
+
+#cp ../L2_Jx0.15_Beta1/corr*.txt        L2_Jx0.15_Beta1/
+#cp ../L2_Jx0.15_Beta1/static_corr*.txt L2_Jx0.15_Beta1/
+#cp ../L2_Jx0.15_Beta1/mid*.txt         L2_Jx0.15_Beta1/
+
+#mkdir L2_Jx0.15_Beta1_V2
+#cp ../L2_Jx0.15_Beta1/corr*.txt        L2_Jx0.15_Beta1_V2/
+#cp ../L2_Jx0.15_Beta1/static_corr*.txt L2_Jx0.15_Beta1_V2/
+#cp ../L2_Jx0.15_Beta1/mid*.txt         L2_Jx0.15_Beta1_V2/
+#
+mkdir L4_Jx0.09_Beta500
+cp ../L4_Jx0.09_Beta500/corr*.txt        L4_Jx0.09_Beta500/
+cp ../L4_Jx0.09_Beta500/static_corr*.txt L4_Jx0.09_Beta500/
+cp ../L4_Jx0.09_Beta500/mid*.txt         L4_Jx0.09_Beta500/
