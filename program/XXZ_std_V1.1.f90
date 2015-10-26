@@ -288,7 +288,7 @@
     enddo
     Vol = Vol*NSub
 
-    NmeasCorr = 10
+    NmeasCorr = 50
 
     allocate(dr(nnb, 1:NSub, 1:Dim))
     allocate(back(nnb, 1:NSub))
@@ -415,8 +415,8 @@
     !<n> is the average kink number per site
     ! <n>=beta*2Vol*<SxSx+SySy>/Vol~beta
     !-- define time-line list ----------------------------------------
-    open(9,file=file_config, iostat=stat)
-    if(IsLoad==1 .and. stat==0) then
+    if(IsLoad==1) then
+	open(9,file=file_config, iostat=stat)
         60 format(i6)
         61 format(f25.17)
         do i=1,Vol
@@ -529,8 +529,8 @@
     if(Dim==3) then
 	Momentum(1, :) = (/0.d0, 0.d0, 0.d0/)
 	Momentum(2, :) = (/0.d0, 0.d0, 2.d0*Pi/)
-  Momentum(3, :) = (/0.d0, 0.d0, 2.d0*Pi*(L(3)-1)/L(3)/)
-  Momentum(4, :) = (/0.d0, 0.d0, 2.d0*Pi*(L(3)-2)/L(3)/)
+        Momentum(3, :) = (/0.d0, 0.d0, 2.d0*Pi*(L(3)-1)/L(3)/)
+        Momentum(4, :) = (/0.d0, 0.d0, 2.d0*Pi*(L(3)-2)/L(3)/)
 	Momentum(5, :) = (/2.d0*Pi/L(1), 2.d0*Pi/L(2), 2.d0*Pi/)
 	Momentum(6, :) = (/Pi, Pi, Pi/)
 
@@ -1716,6 +1716,7 @@
 	enddo
     enddo
     call KOmegaCorrelator()
+    !call KOmegaCorrelatorHardWay()
     !do j = 1, Nk
 	!do i = 0, MxOmega
 	    !CorrKTau(j, i) = CorrKTau(j, i) + GetKTauCorr(j, (i*Beta)/(MxOmega*1.0))
@@ -1893,6 +1894,73 @@
     !SzSz non-zero frequency correlator in momentum space
     implicit none
     integer :: omega
+    integer :: i, j, l, BeginSite, EndSite, Vertex
+    double precision :: BeginTime, EndTime, tmp
+    double precision :: k(1:Dim), vec(1:Dim)
+    double precision :: phase, rephase, imphase, retmp, imtmp, oldre, oldim, ReCorr, ImCorr
+    double precision :: ReOmega, ImOmega
+    double precision :: ReKCorr(1:Nk,0:MxOmega), ImKCorr(1:Nk,0:MxOmega)
+    ReKCorr = 0
+    ImKCorr = 0
+    do j = 1, Vol
+	BeginSite = 1
+	BeginTime = KinkTime(j, BeginSite)
+	EndSite=NextSite(j,BeginSite)
+	EndTime = KinkTime(j, EndSite)
+	do while(EndSite/=2)
+	    ReOmega = SegmentState(j, BeginSite)*(EndTime-BeginTime)
+	    ReKCorr(1, 0) = ReKCorr(1, 0) + ReOmega
+	    do i = 2, Nk
+		ReKCorr(i,0) = ReKCorr(i,0) + ReOmega*ReKPhase(i, j) 
+		ImKCorr(i,0) = ImKCorr(i,0) + ReOmega*ImKPhase(i, j)
+	    enddo
+	    !retmp = dcos(2.0*Pi/Beta*EndTime)
+	    !imtmp = dsin(2.0*Pi/Beta*EndTime)
+	    !print *, EndTime, retmp, imtmp, 2.0*Pi/Beta*EndTime
+	    !rephase = 1.0
+	    !imphase = 0.0
+	    do omega = 1, MxOmega
+		!domega = omega*2.0*Pi/Beta
+		!tmp = 2.0*SegmentState(Vertex, BeginSite)/domega
+		tmp = SegmentState(j, BeginSite)*Beta/(2.0*omega*Pi)
+
+		!oldre = rephase
+		!oldim = imphase
+		!rephase = oldre*retmp-oldim*imtmp 
+		!imphase = oldre*imtmp+oldim*retmp
+		!print *, EndTime ,omega, rephase, imphase
+		rephase = dcos(2.0*Pi/Beta*omega*EndTime)
+		imphase = dsin(2.0*Pi/Beta*omega*EndTime)
+
+		ReOmega = tmp*imphase
+		ImOmega = -tmp*rephase
+
+		ReKCorr(1,omega) = ReKCorr(1,omega) + ReOmega
+		ImKCorr(1,omega) = ImKCorr(1,omega) + ImOmega
+		do i = 2, Nk
+		    ReKCorr(i,omega)=ReKCorr(i,omega)+ReOmega*ReKPhase(i,j)-ImOmega*ImKPhase(i,j)
+		    ImKCorr(i,omega)=ImKCorr(i,omega)+ImOmega*ReKPhase(i,j)+ReOmega*ImKPhase(i,j)
+		enddo
+	    enddo
+	    BeginSite = EndSite
+	    BeginTime = EndTime
+	    EndSite = NextSite(j,EndSite)
+	    EndTime = KinkTime(j,EndSite)
+	enddo
+    enddo
+
+    do omega = 0, MxOmega
+	do i = 1, Nk
+	    DynamicalCorr(i,omega) = DynamicalCorr(i,omega) + (ReKCorr(i,omega)**2.d0+ImKCorr(i,omega)**2.d0)/(Vol*Beta)
+	enddo
+    enddo
+
+  end subroutine KOmegaCorrelator
+
+  subroutine KOmegaCorrelatorHardWay()
+    !SzSz non-zero frequency correlator in momentum space
+    implicit none
+    integer :: omega
     integer :: i, j, l
     double precision :: k(1:Dim), vec(1:Dim)
     double precision :: phase, ReCorr, ImCorr
@@ -1914,7 +1982,7 @@
 	    DynamicalCorr(i,omega) = DynamicalCorr(i,omega) + (ReKCorr(i)**2.d0+ImKCorr(i)**2.d0)/(Vol*Beta)
 	enddo
     enddo
-  end subroutine KOmegaCorrelator
+  end subroutine KOmegaCorrelatorHardWay
 
   double precision function GetKOmegaCorr(k, omega)
     !SzSz non-zero frequency correlator in momentum space

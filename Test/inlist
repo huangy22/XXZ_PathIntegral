@@ -1,5 +1,5 @@
-Block: 1024
-Sample: 10240
+Block: 512
+Sample: 512
 Sweep: 1
 Save:  16 
 Toss:  100

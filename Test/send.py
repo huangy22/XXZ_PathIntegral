@@ -7,7 +7,7 @@ execute="XXZ"
 Dim = 3
 Latticename = "Pyrochlore"
 #Latticename = "Cubic"
-Nk = 2
+Nk = 6
 homedir=os.getcwd()
 filelist=os.listdir(sourcedir)
 sourcename=[elem for elem in filelist if elem[0:3]=="XXZ" and elem[-3:]=="f90"]
