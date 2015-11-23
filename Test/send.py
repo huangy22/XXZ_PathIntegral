@@ -2,7 +2,7 @@
 import random
 import os, sys
 IsCluster=False
-sourcedir="../program/"
+sourcedir="./program/"
 execute="XXZ"
 Dim = 3
 Latticename = "Pyrochlore"

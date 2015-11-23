@@ -1,0 +1,17 @@
+rm *.dat
+cp ../mid_hs_sqa0_1_11.txt .
+cp ../mid_hs_sqa0_1_12.txt .
+cp ../mid_hs_sqa0_1_13.txt .
+cp ../mid_hs_sqa0_1_19.txt .
+cat mid_hs_sqa0_1_6.txt | grep 20\  >>20_0.dat
+cat mid_hs_sqa0_1_14.txt | grep 20\  >>20_1.dat
+cat mid_hs_sqa0_1_15.txt | grep 20\  >>20_2.dat
+cat mid_hs_sqa0_1_16.txt | grep 20\  >>20_3.dat
+cat mid_hs_sqa0_1_17.txt | grep 20\  >>20_4.dat
+cat mid_hs_sqa0_1_18.txt | grep 20\  >>20_5.dat
+cat mid_hs_sqa0_1_11.txt | grep 20\  >>20_6.dat
+cat mid_hs_sqa0_1_12.txt | grep 20\  >>20_7.dat
+cat mid_hs_sqa0_1_13.txt | grep 20\  >>20_8.dat
+cat mid_hs_sqa0_1_19.txt | grep 20\  >>20_9.dat
+gnuplot CorrK_time.plt
+

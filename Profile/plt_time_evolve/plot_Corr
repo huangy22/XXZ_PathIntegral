@@ -1,0 +1,9 @@
+rm *.dat
+cat mid_hs_sqa0_1_0.txt | grep 17\  >>17_0.dat
+cat mid_hs_sqa0_1_4.txt | grep 17\  >>17_1.dat
+cat mid_hs_sqa0_1_5.txt | grep 17\  >>17_2.dat
+cat mid_hs_sqa0_1_6.txt | grep 17\  >>17_3.dat
+cat mid_hs_sqa0_1_7.txt | grep 17\  >>17_4.dat
+cat mid_hs_sqa0_1_8.txt | grep 17\  >>17_5.dat
+gnuplot Corr_time.plt
+

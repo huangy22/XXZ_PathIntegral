@@ -69,6 +69,8 @@ def PlotChi_2D(Chi, lat, Beta, Jx, DoesSave=True):
     plt.xlim(-15, 15)
     plt.ylim(-15, 15)
     label=np.linspace(min(ChiK_hhl),max(ChiK_hhl), 4)
+    c = plt.colorbar(orientation='horizontal', shrink=0.8, ticks=label)
+    c.set_label(r"$S(\mathbf{Q})$", fontsize=16)
 
     plt.figure(1)
     ax1=plt.subplot(122,aspect='equal')
@@ -78,6 +80,9 @@ def PlotChi_2D(Chi, lat, Beta, Jx, DoesSave=True):
     plt.xlim(-15, 15)
     plt.ylim(-15, 15)
     label=np.linspace(min(ChiK_hl0),max(ChiK_hl0), 4)
+    c = plt.colorbar(orientation='horizontal', shrink=0.8, ticks=label)
+    c.set_label(r"$S(\mathbf{Q})$", fontsize=16)
+
 
     if DoesSave:
         plt.savefig("chiK_{0}_L{1}_{2}_{3}.pdf".format(lat.Name, lat.L[0], Beta, Jx))
@@ -101,8 +106,8 @@ if __name__=="__main__":
 
     l=lat.Lattice("Pyrochlore", Map)
 
-    #Data = IO.LoadDict("../data/L{0}_{1}_{2}/static_corr".format(L,Beta,Jx))["Correlations"]
-    Data = IO.LoadDict("../../Ising/static_corr".format(L,Beta,Jx))["Correlations"]
+    Data = IO.LoadDict("./static_corr_Jx0_J3-0.5")["Correlations"]
+    #Data = IO.LoadDict("../../Ising/static_corr".format(L,Beta,Jx))["Correlations"]
     Chi = Reform(Data, NSub, L, Vol)
     PlotChi_2D(Chi, l, Beta, Jx, False)
     PlotChi_2D(Chi, l, Beta, Jx)

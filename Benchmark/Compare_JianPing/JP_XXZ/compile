@@ -1,1 +1,0 @@
-gfortran TATB3.f -O3 -o TATB3

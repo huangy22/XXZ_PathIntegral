@@ -1,7 +1,7 @@
-Block: 512
-Sample: 512
+Block: 1024
+Sample: 1024
 Sweep: 1
 Save:  16 
 Toss:  100
 IsLoad: 0
-4  4  4  0.25  1.0  0.0  0.0  1
+4  4  4  1.00  1.0  -2.0  0.0  0.0  1

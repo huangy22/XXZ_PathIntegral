@@ -1,0 +1,5 @@
+rm *.dat
+cp ../mid_hs_sqa0_1_0.txt .
+cat mid_hs_sqa0_1_0.txt | grep \ 2\  >>2_0.dat
+gnuplot Kink_time.plt
+

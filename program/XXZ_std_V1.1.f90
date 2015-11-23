@@ -84,7 +84,8 @@
     !! THIS IS PROJECT-DEPENDENT 
     character(10)       :: LatticeName
     integer             :: Dim                                 ! dimensionality
-    integer             :: nnb                                 ! # neighboring edges
+    integer             :: nnb                                 ! # nearest neighboring edges
+    integer             :: totnb                               ! # total neighboring edges
     integer,allocatable :: Back(:,:)                           ! nnb direction revert
     integer             :: NSub                                ! # sublattices
     integer,allocatable :: Sub(:)                              ! Sublattice index for each vertex
@@ -111,6 +112,7 @@
     !-- Lattice and state --------------------------------------------
     !! THIS IS PROJECT-DEPENDENT 
     integer, allocatable :: Ngs(:,:)     ! neighbouring-vertex table
+    double precision, allocatable :: Coupling(:,:)     ! neighbouring-vertex table
     integer(1), allocatable  :: dr(:,:,:)  ! auxillary variables to measure wrapping probability
     !-----------------------------------------------------------------
 
@@ -168,7 +170,7 @@
     !-- data structs -------------------------------------------------
 
     double precision       :: Comp                             ! common variable in probability
-    double precision       :: JJ                               ! common variable 
+    double precision       :: JJ,J3                            ! common variable 
     double precision       :: Q
     double precision       :: QQ
     double precision       :: ExternalField
@@ -238,8 +240,8 @@
     allocate(komegafiles(1:Nk))
     allocate(ktaufiles(1:Nk))
 
-    print *, 'Lattice, L, beta, J,Q,Hz,Ntoss, Nsamp, Nswee, NSave, Seed, NBlck, IsLoad, Outputfile, files:'
-    read  *,  LatticeName,L(:),beta,JJ,Q,ExternalField,Ntoss,Nsamp,Nswee,NSave,Seed,NBlck, &
+    print *, 'Lattice, L, beta, J,J3,Q,Hz,Ntoss, Nsamp, Nswee, NSave, Seed, NBlck, IsLoad, Outputfile, files:'
+    read  *,  LatticeName,L(:),beta,JJ,J3,Q,ExternalField,Ntoss,Nsamp,Nswee,NSave,Seed,NBlck, &
     & IsLoad,filename,statfile, midfile
 
     do i = 1, Nk
@@ -254,6 +256,7 @@
     if(LatticeName=='Pyrochlore') then
 	NSub = 4
 	nnb = 2*Dim
+	totnb = 18
     elseif(LatticeName=='Cubic') then
 	NSub = 1
 	nnb = 2*Dim
@@ -291,8 +294,9 @@
     NmeasCorr = 50
 
     allocate(dr(nnb, 1:NSub, 1:Dim))
-    allocate(back(nnb, 1:NSub))
-    allocate(Ngs(nnb, 1:MxV))
+    allocate(Back(totnb, 1:NSub))
+    allocate(Ngs(totnb, 1:MxV))
+    allocate(Coupling(totnb, 1:MxV))
     allocate(Sub(1:Vol))
     allocate(LatticeVector(1:Dim, 1:Dim))
     allocate(SubVector(1:NSub, 1:Dim))
@@ -304,6 +308,9 @@
 
     !!!!!Jzz
     JJ=JJ/4.0
+    J3=J3/4.0
+    Coupling(1:nnb,1:Vol) = JJ
+    Coupling(nnb+1:totnb,1:Vol) = J3
 
     !!!!Jxx
     Q=Q/4.0
@@ -322,7 +329,7 @@
     allocate(NextSite(MxV,MaxKink))
     allocate(NeighSite(MxV,MaxKink))        
     allocate(NeighVertexNum(MxV,MaxKink))
-    allocate(NearestSite(MxV,MaxKink,nnb)) 
+    allocate(NearestSite(MxV,MaxKink,totnb)) 
 
     TotSamp = Nsamp*NBlck/1024
     RunNum(:)=0
@@ -341,6 +348,7 @@
     call t_elapse(1)         ! '1' for set up
 
     call winding_number()
+    print *, "wingding done!"
     WR(:)=WindR(:)
     Wt=WindT
 
@@ -349,8 +357,9 @@
         do iblck = 1, NBlck
 	    do itoss = 1, Ntoss
 	      call monte
-              !call check_config
+	      !call check_config
 	    enddo
+	    print *, "NBlck", iblck
         enddo
     endif
     call t_elapse(2)         ! '2' for equilibration
@@ -370,7 +379,7 @@
 	call monte
 	!call check_config
         call measure
-	if(mod(isamp,NmeasCorr)==0)  call measure_Corr
+	!if(mod(isamp,NmeasCorr)==0)  call measure_Corr
         call coll_data(iblck)
       enddo
       print *, "simulation: Block", iblck, " done!"
@@ -380,7 +389,10 @@
       if(mod(iblck, NSave)==0) then
 	  call write2file_corr(iblck)
           call midwrite2file(iblck)
-	  !call saveconfig
+	  call saveconfig
+	  EnergyCheck = potential_energy()
+	  call winding_number
+          print *, EnergyCheck, WindR, WindT 
           print*, iblck,"save data and configuration"
       endif
     enddo
@@ -392,6 +404,9 @@
     call stat_alan
     call write2file
     call saveconfig
+    EnergyCheck = potential_energy()
+    call winding_number
+    print *, EnergyCheck, WindR, WindT 
     call t_elapse(4)         ! '4' total time 
 
   CONTAINS
@@ -429,12 +444,15 @@
             read(9,60,advance="no") NeighSite(i,j)
             read(9,60,advance="no") NeighVertexNum(i,j)
             read(9,61,advance="no") KinkTime(i,j)
-            do k=1,nnb
+            do k=1,totnb
               read(9,60,advance="no") NearestSite(i,j,k)
             enddo
           enddo
         enddo
         close(9)
+	EnergyCheck = potential_energy()
+	call winding_number
+	print *, EnergyCheck, WindR, WindT 
     else
         IsLoad = 0
         print *, "No load file, isload=0!!"
@@ -732,6 +750,7 @@
 	    if(izp>L(3)) izp = izp-L(3)
 	    if(izm==0) izm = L(3)
 
+	    !!!!!NEAREST NEIGHBOR!!!!!!!!!!!!!!!!!!!!!!
 	    do i = 1, 3
 	      Ngs(i, site(1)) = site(i+1)
 	      Ngs(back(i, 1),site(i+1)) = site(1)
@@ -776,7 +795,111 @@
 	  enddo
 	enddo
       enddo
-      
+
+      !!!!!NEXT NEAREST NEIGHBOR!!!!!!!!!!!!!!!!!!!!!!
+      do i = 1, 4
+        site(i) = i
+      enddo
+
+      do iz=1,L(3)
+	do iy=1,L(2)
+	  do ix=1,L(1)
+            ixp = ix+1
+	    ixm = ix-1
+	    iyp = iy+1
+	    iym = iy-1
+	    izp = iz+1
+	    izm = iz-1
+
+            if(ixp>L(1)) ixp = ixp-L(1)
+	    if(ixm==0) ixm = L(1)
+	    if(iyp>L(2)) iyp = iyp-L(2)
+	    if(iym==0) iym = L(2)
+	    if(izp>L(3)) izp = izp-L(3)
+	    if(izm==0) izm = L(3)
+
+    	    call GetSite(itmp, (/ix, iym, iz/), 2);   Ngs(7, site(1))= itmp
+    	    call GetSite(itmp, (/ix, iy, izm/), 2);   Ngs(8, site(1))= itmp
+    	    call GetSite(itmp, (/ixm, iyp, iz/), 2);  Ngs(9, site(1))= itmp
+    	    call GetSite(itmp, (/ixm, iy, izp/), 2);  Ngs(10, site(1))= itmp
+
+    	    call GetSite(itmp, (/ixp, iym, iz/), 1);   Ngs(7, site(2))= itmp
+    	    call GetSite(itmp, (/ixp, iy, izm/), 1);   Ngs(8, site(2))= itmp
+    	    call GetSite(itmp, (/ix, iy, izp/), 1);  Ngs(9, site(2))= itmp
+    	    call GetSite(itmp, (/ix, iyp, iz/), 1);  Ngs(10, site(2))= itmp
+	    Back(7, 1) = 10;   Back(8, 1) = 9;  Back(9, 1) = 7; Back(10, 1) = 8
+	    Back(10, 2) = 7;   Back(9, 2) = 8;  Back(7, 2) = 9; Back(8, 2) = 10
+
+
+    	    call GetSite(itmp, (/ixm, iy, iz/), 3);   Ngs(11, site(1))= itmp
+    	    call GetSite(itmp, (/ix, iy, izm/), 3);   Ngs(12, site(1))= itmp
+    	    call GetSite(itmp, (/ixp, iym, iz/), 3);  Ngs(13, site(1))= itmp
+    	    call GetSite(itmp, (/ix, iym, izp/), 3);  Ngs(14, site(1))= itmp
+
+    	    call GetSite(itmp, (/ixm, iyp, iz/), 1);   Ngs(7, site(3))= itmp
+    	    call GetSite(itmp, (/ix, iyp, izm/), 1);   Ngs(8, site(3))= itmp
+    	    call GetSite(itmp, (/ixp, iy, iz/), 1);  Ngs(9, site(3))= itmp
+    	    call GetSite(itmp, (/ix, iy, izp/), 1);  Ngs(10, site(3))= itmp
+	    Back(11, 1) = 9;   Back(12, 1) = 10;  Back(13, 1) = 7; Back(14, 1) = 8
+	    Back(9, 3) = 11;   Back(10, 3) = 12;  Back(7, 3) = 13; Back(8, 3) = 14
+
+    	    call GetSite(itmp, (/ixm, iy, iz/), 4);   Ngs(15, site(1))= itmp
+    	    call GetSite(itmp, (/ix, iym, iz/), 4);   Ngs(16, site(1))= itmp
+    	    call GetSite(itmp, (/ixp, iy, izm/), 4);  Ngs(17, site(1))= itmp
+    	    call GetSite(itmp, (/ix, iyp, izm/), 4);  Ngs(18, site(1))= itmp
+
+    	    call GetSite(itmp, (/ixm, iy, izp/), 1);   Ngs(7, site(4))= itmp
+    	    call GetSite(itmp, (/ix, iym, izp/), 1);   Ngs(8, site(4))= itmp
+    	    call GetSite(itmp, (/ixp, iy, iz/), 1);    Ngs(9, site(4))= itmp
+    	    call GetSite(itmp, (/ix, iyp, iz/), 1);    Ngs(10, site(4))= itmp
+	    Back(15, 1) = 9;   Back(16, 1) = 10;  Back(17, 1) = 7; Back(18, 1) = 8
+	    Back(9, 4) = 15;   Back(10, 4) = 16;  Back(7, 4) = 17; Back(8, 4) = 18
+
+    	    call GetSite(itmp, (/ixp, iy, iz/), 3);   Ngs(11, site(2))= itmp
+    	    call GetSite(itmp, (/ixp, iy, izm/), 3);   Ngs(12, site(2))= itmp
+    	    call GetSite(itmp, (/ix, iym, iz/), 3);  Ngs(13, site(2))= itmp
+    	    call GetSite(itmp, (/ix, iym, izp/), 3);  Ngs(14, site(2))= itmp
+
+    	    call GetSite(itmp, (/ix, iyp, iz/), 2);   Ngs(11, site(3))= itmp
+    	    call GetSite(itmp, (/ix, iyp, izm/), 2);   Ngs(12, site(3))= itmp
+    	    call GetSite(itmp, (/ixm, iy, iz/), 2);  Ngs(13, site(3))= itmp
+    	    call GetSite(itmp, (/ixm, iy, izp/), 2);  Ngs(14, site(3))= itmp
+	    Back(11, 2) = 13;   Back(12, 2) = 14;  Back(13, 2) = 11; Back(14, 2) = 12
+	    Back(13, 3) = 11;   Back(14, 3) = 12;  Back(11, 3) = 13; Back(12, 3) = 14
+
+    	    call GetSite(itmp, (/ixp, iym, iz/), 4);   Ngs(15, site(2))= itmp
+    	    call GetSite(itmp, (/ixp, iy, iz/), 4);   Ngs(16, site(2))= itmp
+    	    call GetSite(itmp, (/ix, iy, izm/), 4);  Ngs(17, site(2))= itmp
+    	    call GetSite(itmp, (/ix, iyp, izm/), 4);  Ngs(18, site(2))= itmp
+
+    	    call GetSite(itmp, (/ix, iy, izp/), 2);    Ngs(11, site(4))= itmp
+    	    call GetSite(itmp, (/ix, iym, izp/), 2);   Ngs(12, site(4))= itmp
+    	    call GetSite(itmp, (/ixm, iy, iz/), 2);    Ngs(13, site(4))= itmp
+    	    call GetSite(itmp, (/ixm, iyp, iz/), 2);   Ngs(14, site(4))= itmp
+	    Back(15, 2) = 14;   Back(16, 2) = 13;  Back(17, 2) = 11; Back(18, 2) = 12
+	    Back(14, 4) = 15;   Back(13, 4) = 16;  Back(11, 4) = 17; Back(12, 4) = 18
+
+
+    	    call GetSite(itmp, (/ix, iyp, iz/), 4);   Ngs(15, site(3))= itmp
+    	    call GetSite(itmp, (/ixm, iyp, iz/), 4);   Ngs(16, site(3))= itmp
+    	    call GetSite(itmp, (/ix, iy, izm/), 4);  Ngs(17, site(3))= itmp
+    	    call GetSite(itmp, (/ixp, iy, izm/), 4);  Ngs(18, site(3))= itmp
+
+    	    call GetSite(itmp, (/ix, iy, izp/), 3);    Ngs(15, site(4))= itmp
+    	    call GetSite(itmp, (/ixm, iy, izp/), 3);   Ngs(16, site(4))= itmp
+    	    call GetSite(itmp, (/ix, iym, iz/), 3);    Ngs(17, site(4))= itmp
+    	    call GetSite(itmp, (/ixp, iym, iz/), 3);   Ngs(18, site(4))= itmp
+	    Back(15, 3) = 17;   Back(16, 3) = 18;  Back(17, 3) = 15; Back(18, 3) = 16
+	    Back(17, 4) = 15;   Back(18, 4) = 16;  Back(15, 4) = 17; Back(16, 4) = 18
+
+
+	    do i = 1, NSub
+		site(i) = site(i)+4
+	    enddo
+	  enddo
+        enddo
+      enddo
+
       !-- auxillary variables to measure wrapping probability-----------
       !-- dr(nnb, sublattice of the target site, x/y/z)-----------------
       dr(:,:,:) = 0
@@ -1363,7 +1486,7 @@
         NextSite(CurrentVertex,CurrentSite)=NewSite
 
         SegmentNum(CurrentVertex)=SegmentNum(CurrentVertex)+1
-        do i=1,nnb
+        do i=1,totnb
             Temp=NearestSite(CurrentVertex,CNSite,i)
             NVertex=Ngs(i,CurrentVertex)
             do while(KinkTime(NVertex,Temp)>NewSiteTime)
@@ -1402,7 +1525,7 @@
         double precision :: NewSiteTime
         integer :: i,Temp,NVertex,PSite
         if(IsPast==1) then
-            do i=1,nnb
+            do i=1,totnb
                 NVertex=Ngs(i,CurrentVertex)
                 Temp=NearestSite(CurrentVertex,CurrentSite,i)
                 do while(KinkTime(NVertex,Temp)>NewSiteTime)
@@ -1413,7 +1536,7 @@
             enddo
         else
             PSite=PrevSite(CurrentVertex,CurrentSite)
-            do i=1,nnb
+            do i=1,totnb
                 NVertex=Ngs(i,CurrentVertex)
                 Temp=NearestSite(CurrentVertex,CurrentSite,i)
                 if(NearestSite(NVertex,Temp,Back(i, Sub(CurrentVertex)))/=CurrentSite) then
@@ -1462,7 +1585,7 @@
         if(IsPast==1) then
             TarTime=0.0
             NeiSite=NextSite(NeiVertex,NeiSite)
-            do i=1,nnb
+            do i=1,totnb
                 Vertex=Ngs(i,CurVertex)
                 Site=NextSite(Vertex,NearestSite(CurVertex,CurSite,i))
                 TempTime=KinkTime(Vertex,Site)
@@ -1486,7 +1609,7 @@
             enddo
         else
             TarTime=beta
-            do i=1,nnb
+            do i=1,totnb
                 Vertex=Ngs(i,CurVertex)
                 Site=NearestSite(CurVertex,CurSite,i)
                 TempTime=KinkTime(Vertex,Site)
@@ -1516,7 +1639,7 @@
         integer ::i
         double precision ::Time
         Time=KinkTime(Vertex,NewSite)
-        do i=1,nnb
+        do i=1,totnb
             NVertex=Ngs(i,Vertex)
             tarSite=NearestSite(Vertex,EndSite,i)
             if(NearestSite(NVertex,tarSite,Back(i,Sub(Vertex)))==EndSite) then
@@ -1565,10 +1688,10 @@
         double precision :: Energy,BeginTime,EndTime
         integer :: i,Vertex(3),Site(3)
         Energy=0.0
-        do i=1,nnb
+        do i=1,totnb
             NSite=NearestSite(CurrentVertex,BeginSite,i)
             NVertex=Ngs(i,CurrentVertex)
-            Energy=Energy+delta_E(NVertex,NSite,BeginTime,EndTime)
+            Energy=Energy+delta_E(NVertex,NSite,BeginTime,EndTime)*Coupling(i, CurrentVertex)
         enddo
         single_delta_E=-2.0*SegmentState(CurrentVertex,BeginSite)*Energy
 	!single_delta_E=single_delta_E+potential_E(CurrentVertex,BeginSite,BeginTime,EndTime)
@@ -1588,18 +1711,18 @@
 	Energy2=0.0
         Vertex1=Vertex
         Vertex2=Ngs(NeighNum,Vertex)
-        do i=1,nnb
+        do i=1,totnb
             NVertex=Ngs(i,Vertex1)
             if(NVertex==Vertex2) cycle
             NSite=NearestSite(Vertex1,Site1,i)
-            Energy1=Energy1+delta_E(NVertex,NSite,BeginTime,EndTime)
+            Energy1=Energy1+delta_E(NVertex,NSite,BeginTime,EndTime)*Coupling(i, Vertex1)
         enddo
         Energy1=Energy1*SegmentState(Vertex1,Site1)
-        do i=1,nnb
+        do i=1,totnb
             NVertex=Ngs(i,Vertex2)
             if(NVertex==Vertex1) cycle
             NSite=NearestSite(Vertex2,Site2,i)
-            Energy2=Energy2+delta_E(NVertex,NSite,BeginTime,EndTime)
+            Energy2=Energy2+delta_E(NVertex,NSite,BeginTime,EndTime)*Coupling(i, Vertex2)
         enddo
         Energy2=Energy2*SegmentState(Vertex2,Site2)
         double_delta_E=-2.0*(Energy1+Energy2)
@@ -1630,7 +1753,7 @@
         enddo
         Energy=Energy-SegmentState(NVertex,TarSite) &
             &  *(EndTime-PrevTime)
-        delta_E=JJ*Energy
+        delta_E=Energy
         !For ferromagnetic case, there will be a minus sign here
     END FUNCTION delta_E
 
@@ -1696,15 +1819,15 @@
     Quan(12)= SM()**2                  !! Staggerd Magnetization 
     Quan(13)= Quan(12)**2              !! staggered M^4
     Quan(14)= Quan(13)*Vol             !! Spatial Susceptibility 
-    !Quan(15)= Correlator(1,1)
-    !Quan(16)= Correlator(1,2)
-    !Quan(17)= Correlator(1,Vol/2)
+    Quan(15)= Correlator(1,1)
+    Quan(16)= Correlator(1,2)
+    Quan(17)= Correlator(1,Vol/2)
     Quan(18)= W0
     Quan(19)= W1
-    !Quan(20)= GetKTauCorr(2, 0.1d0)
-    !Quan(21)= GetKTauCorr(2, Beta/2.d0)
-    Quan(22)= GetKOmegaCorr(2, 1024)
-    Quan(23)= GetKOmegaCorr(2, 2048)
+    Quan(20)= GetKOmegaCorr(2, 0)
+    Quan(21)= GetKOmegaCorr(2, 1)
+    Quan(22)= GetKOmegaCorr(2, 2)
+    Quan(23)= GetKOmegaCorr(2, 512)
   END SUBROUTINE measure
 
   SUBROUTINE measure_Corr
@@ -1715,8 +1838,8 @@
 	    StaticCorr(i+(j-1)*Vol) = StaticCorr(i+(j-1)*Vol)+Correlator(j, i)
 	enddo
     enddo
-    call KOmegaCorrelator()
-    !call KOmegaCorrelatorHardWay()
+    !call KOmegaCorrelator()
+    call KOmegaCorrelatorHardWay()
     !do j = 1, Nk
 	!do i = 0, MxOmega
 	    !CorrKTau(j, i) = CorrKTau(j, i) + GetKTauCorr(j, (i*Beta)/(MxOmega*1.0))
@@ -1737,10 +1860,10 @@
         do while(BeginSite/=2)
             BeginTime=KinkTime(i,BeginSite)
             EndTime=KinkTime(i,EndSite)
-            do j=1,nnb
+            do j=1,totnb
                 NSite=NearestSite(i,BeginSite,j)
                 NVertex=Ngs(j,i)
-                temp1=temp1+SegmentState(i,BeginSite)*delta_E(NVertex,NSite,BeginTime,EndTime)
+                temp1=temp1+SegmentState(i,BeginSite)*delta_E(NVertex,NSite,BeginTime,EndTime)*Coupling(j,i)
             enddo
             BeginSite=EndSite
             EndSite=NextSite(i,EndSite)
@@ -2268,7 +2391,7 @@
         write(9,50,advance="no") NeighSite(i,j)
         write(9,50,advance="no") NeighVertexNum(i,j)
         write(9,51,advance="no") KinkTime(i,j)
-        do k=1,nnb
+        do k=1,totnb
           write(9,50,advance="no") NearestSite(i,j,k)
         enddo
       enddo
@@ -2444,7 +2567,7 @@
     implicit none
     integer :: Site,Vertex,num,i,NVertex, state
     double precision  :: Time
-    do i=1,nnb
+    do i=1,totnb
         NVertex=Ngs(i,Vertex)
         if(KinkTime(NVertex,NearestSite(Vertex,Site,i))>KinkTime(Vertex,Site))then
             write(18,*) number,Vertex,Site

@@ -1,0 +1,15 @@
+rm *.dat
+cp ../mid_hs_sqa0_1_10.txt .
+cp ../mid_hs_sqa0_1_14.txt .
+cp ../mid_hs_sqa0_1_15.txt .
+cp ../mid_hs_sqa0_1_16.txt .
+cp ../mid_hs_sqa0_1_17.txt .
+cp ../mid_hs_sqa0_1_18.txt .
+cat mid_hs_sqa0_1_10.txt | grep \ 3\  >>3_0.dat
+cat mid_hs_sqa0_1_14.txt | grep \ 3\  >>3_1.dat
+cat mid_hs_sqa0_1_15.txt | grep \ 3\  >>3_2.dat
+cat mid_hs_sqa0_1_16.txt | grep \ 3\  >>3_3.dat
+cat mid_hs_sqa0_1_17.txt | grep \ 3\  >>3_4.dat
+cat mid_hs_sqa0_1_18.txt | grep \ 3\  >>3_5.dat
+gnuplot Energy_time.plt
+
